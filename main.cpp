@@ -580,6 +580,8 @@ void processInput(GLFWwindow* window) {
         if (feedbackState != FB_NONE) {
             if (currentTime - feedbackTimer >= FEEDBACK_DURATION) {
                 feedbackState = FB_NONE;
+                // 🔥 FIX: prepare next question BEFORE leaving quiz screen
+                activeQuestion = getNextQuestion();
                 currentGameState = PLAYING;
             }
             return; // input blocked during feedback animation
@@ -640,6 +642,7 @@ void processInput(GLFWwindow* window) {
         if (glfwGetKey(window,GLFW_KEY_E)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_E]) {
             applySkip();
             quizJustExited=true; quizCooldownTimer=currentTime;
+            activeQuestion = getNextQuestion(); // prepare next question immediately
             currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_E]=true;
         } else if (glfwGetKey(window,GLFW_KEY_E)==GLFW_RELEASE) {
