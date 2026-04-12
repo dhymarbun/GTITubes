@@ -11,10 +11,19 @@
 // Window dimensions
 const int WIDTH = 800;
 const int HEIGHT = 600;
-float gameStartTime = 0.0f;
+
+// =============================================
+// BUG FIX #4 — Replace gameStartTime manipulation with a stable offset.
+// currentGameTime = (glfwGetTime() - gameStartTime) + timeOffset
+// Rewards subtract from timeOffset (negative = faster time shown).
+// Penalties add to timeOffset (positive = slower time shown).
+// This keeps glfwGetTime() untouched and the display stable.
+// =============================================
+float gameStartTime   = 0.0f;
+float timeOffset      = 0.0f;   // BUG FIX #4: accumulated penalty/reward seconds
 float currentGameTime = 0.0f;
-bool gameStarted = false;
-char timeString[32];
+bool  gameStarted     = false;
+char  timeString[32];
 
 // =============================================
 // QUIZ SYSTEM - 10 Questions (Easy/Medium/Hard)
@@ -22,7 +31,7 @@ char timeString[32];
 struct Question {
     const char* question;
     const char* options[4];
-    int correct; // 0=A, 1=B, 2=C, 3=D
+    int correct;    // 0=A, 1=B, 2=C, 3=D
     int difficulty; // 0=easy, 1=medium, 2=hard
 };
 
@@ -56,15 +65,15 @@ Question questions[] = {
 const int TOTAL_QUESTIONS = 10;
 
 // Shuffled question order (easy->medium->hard maintained)
-int questionOrder[TOTAL_QUESTIONS];
+int  questionOrder[TOTAL_QUESTIONS];
 bool questionUsed[TOTAL_QUESTIONS];
-int currentQuestionIndex = 0; // index into questionOrder[]
-int activeQuestion = 0;       // actual question index shown
+int  currentQuestionIndex = 0; // index into questionOrder[]
+int  activeQuestion       = 0; // actual question index shown
 
-float quizStartTime  = 0.0f;
-float quizTimeLimit  = 15.0f;
-int   paperCellX     = -1;
-int   paperCellZ     = -1;
+float quizStartTime = 0.0f;
+float quizTimeLimit = 15.0f;
+int   paperCellX    = -1;
+int   paperCellZ    = -1;
 
 // =============================================
 // LIFE SYSTEM
@@ -76,16 +85,16 @@ const int MAX_LIVES = 3;
 // VISUAL FEEDBACK
 // =============================================
 enum FeedbackType { FB_NONE, FB_CORRECT, FB_WRONG };
-FeedbackType feedbackState  = FB_NONE;
-float        feedbackTimer  = 0.0f;
-const float  FEEDBACK_DURATION = 1.2f; // seconds
+FeedbackType feedbackState     = FB_NONE;
+float        feedbackTimer     = 0.0f;
+const float  FEEDBACK_DURATION = 1.2f;
 
 // =============================================
 // QUIZ RE-TRIGGER PREVENTION
 // =============================================
-bool quizJustExited     = false;
+bool  quizJustExited    = false;
 float quizCooldownTimer = 0.0f;
-const float QUIZ_COOLDOWN = 2.0f; // seconds after exit before can retrigger
+const float QUIZ_COOLDOWN = 2.0f;
 
 // =============================================
 // GAME STATES
@@ -96,7 +105,7 @@ enum GameState {
     COMPLETED,
     RULES_SCREEN,
     QUIZ_SCREEN,
-    GAME_OVER      // NEW
+    GAME_OVER
 };
 enum GameState currentGameState = TITLE_SCREEN;
 bool rulesDisplayed = false;
@@ -104,9 +113,9 @@ bool rulesDisplayed = false;
 // =============================================
 // PLAYER
 // =============================================
-float playerX = 1.5f;
-float playerY = 0.0f;
-float playerZ = 1.5f;
+float playerX     = 1.5f;
+float playerY     = 0.0f;
+float playerZ     = 1.5f;
 float playerAngle = 0.0f;
 float playerSpeed = 0.05f;
 float rotationSpeed = 0.03f;
@@ -118,7 +127,7 @@ char  finalscore[32];
 char  finaltime[32];
 char  livesString[32];
 
-// Board animation (replaces gold bar)
+// Board animation
 float boardYOffset   = 0.0f;
 float boardAnimSpeed = 1.0f;
 float boardRotation  = 0.0f;
@@ -157,34 +166,34 @@ void copyMazeArray(int dest[MAZE_WIDTH][MAZE_HEIGHT], int src[MAZE_WIDTH][MAZE_H
 // SHUFFLE QUESTION ORDER (easy->medium->hard)
 // =============================================
 void shuffleQuestions() {
-    // Separate by difficulty, shuffle within each tier, then concat
     int easy[3]   = {0,1,2};
     int medium[4] = {3,4,5,6};
     int hard[3]   = {7,8,9};
 
-    // Fisher-Yates shuffle each group
-    for (int i=2; i>0; i--) { int j=rand()%(i+1); int t=easy[i]; easy[i]=easy[j]; easy[j]=t; }
+    for (int i=2; i>0; i--) { int j=rand()%(i+1); int t=easy[i];   easy[i]=easy[j];     easy[j]=t; }
     for (int i=3; i>0; i--) { int j=rand()%(i+1); int t=medium[i]; medium[i]=medium[j]; medium[j]=t; }
-    for (int i=2; i>0; i--) { int j=rand()%(i+1); int t=hard[i]; hard[i]=hard[j]; hard[j]=t; }
+    for (int i=2; i>0; i--) { int j=rand()%(i+1); int t=hard[i];   hard[i]=hard[j];     hard[j]=t; }
 
     for (int i=0;i<3;i++) questionOrder[i]   = easy[i];
     for (int i=0;i<4;i++) questionOrder[3+i] = medium[i];
     for (int i=0;i<3;i++) questionOrder[7+i] = hard[i];
 
-    for (int i=0;i<TOTAL_QUESTIONS;i++) questionUsed[i]=false;
+    for (int i=0;i<TOTAL_QUESTIONS;i++) questionUsed[i] = false;
+
+    // BUG FIX #3: single authoritative reset point for the index
     currentQuestionIndex = 0;
 }
 
-// Get next question index (sequential in shuffled order, wraps)
+// BUG FIX #3: getNextQuestion advances currentQuestionIndex and returns the
+// question id WITHOUT marking it used yet (marking happens on resolution).
 int getNextQuestion() {
-    // find next unused in order
     for (int i = currentQuestionIndex; i < TOTAL_QUESTIONS; i++) {
         if (!questionUsed[questionOrder[i]]) {
             currentQuestionIndex = i;
             return questionOrder[i];
         }
     }
-    // all used => reset and restart shuffle
+    // All used — reshuffle and start over
     shuffleQuestions();
     return questionOrder[0];
 }
@@ -198,8 +207,8 @@ void setupCamera() {
     gluPerspective(60.0, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    float lookX = sin(playerAngle);
-    float lookZ = -cos(playerAngle);
+    float lookX =  sinf(playerAngle);
+    float lookZ = -cosf(playerAngle);
     gluLookAt(playerX, playerY+0.5f, playerZ,
               playerX+lookX, playerY+0.5f, playerZ+lookZ,
               0.0f, 1.0f, 0.0f);
@@ -210,7 +219,7 @@ void setupCamera() {
 // =============================================
 void drawCube(float size) {
     float h = size / 2.0f;
-    GLfloat normals[][3]  = {
+    GLfloat normals[][3] = {
         {0,0,1},{0,0,-1},{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}
     };
     GLfloat verts[][3] = {
@@ -222,7 +231,10 @@ void drawCube(float size) {
         {-h,-h, h},{-h,-h,-h},{ h,-h,-h},{ h,-h, h}
     };
     glBegin(GL_QUADS);
-    for (int f=0;f<6;f++) { glNormal3fv(normals[f]); for(int v=0;v<4;v++) glVertex3fv(verts[f*4+v]); }
+    for (int f=0;f<6;f++) {
+        glNormal3fv(normals[f]);
+        for (int v=0;v<4;v++) glVertex3fv(verts[f*4+v]);
+    }
     glEnd();
 }
 
@@ -232,17 +244,17 @@ void drawCube(float size) {
 bool checkCollision(float newX, float newZ) {
     float buf = 0.15f;
     int cx=(int)newX, cz=(int)newZ;
-    if(cx<0||cx>=MAZE_WIDTH||cz<0||cz>=MAZE_HEIGHT) return true;
-    if(maze[cz][cx]==1) return true;
+    if (cx<0||cx>=MAZE_WIDTH||cz<0||cz>=MAZE_HEIGHT) return true;
+    if (maze[cz][cx]==1) return true;
     float fx=newX-cx, fz=newZ-cz;
-    if(fx>(1-buf)&&cx+1<MAZE_WIDTH  &&maze[cz][cx+1]==1) return true;
-    if(fx<buf    &&cx-1>=0          &&maze[cz][cx-1]==1) return true;
-    if(fz>(1-buf)&&cz+1<MAZE_HEIGHT &&maze[cz+1][cx]==1) return true;
-    if(fz<buf    &&cz-1>=0          &&maze[cz-1][cx]==1) return true;
-    if(fx>(1-buf)&&fz>(1-buf)&&cx+1<MAZE_WIDTH &&cz+1<MAZE_HEIGHT&&maze[cz+1][cx+1]==1) return true;
-    if(fx<buf    &&fz<buf    &&cx-1>=0          &&cz-1>=0         &&maze[cz-1][cx-1]==1) return true;
-    if(fx>(1-buf)&&fz<buf    &&cx+1<MAZE_WIDTH  &&cz-1>=0         &&maze[cz-1][cx+1]==1) return true;
-    if(fx<buf    &&fz>(1-buf)&&cx-1>=0          &&cz+1<MAZE_HEIGHT&&maze[cz+1][cx-1]==1) return true;
+    if (fx>(1-buf)&&cx+1<MAZE_WIDTH  &&maze[cz][cx+1]==1) return true;
+    if (fx<buf    &&cx-1>=0          &&maze[cz][cx-1]==1) return true;
+    if (fz>(1-buf)&&cz+1<MAZE_HEIGHT &&maze[cz+1][cx]==1) return true;
+    if (fz<buf    &&cz-1>=0          &&maze[cz-1][cx]==1) return true;
+    if (fx>(1-buf)&&fz>(1-buf)&&cx+1<MAZE_WIDTH &&cz+1<MAZE_HEIGHT&&maze[cz+1][cx+1]==1) return true;
+    if (fx<buf    &&fz<buf    &&cx-1>=0          &&cz-1>=0         &&maze[cz-1][cx-1]==1) return true;
+    if (fx>(1-buf)&&fz<buf    &&cx+1<MAZE_WIDTH  &&cz-1>=0         &&maze[cz-1][cx+1]==1) return true;
+    if (fx<buf    &&fz>(1-buf)&&cx-1>=0          &&cz+1<MAZE_HEIGHT&&maze[cz+1][cx-1]==1) return true;
     return false;
 }
 
@@ -252,7 +264,37 @@ bool isNearBoard(float px, float pz, int x, int z) {
 }
 
 // =============================================
-// RENDER MAZE - QUIZ BOARD (new object design)
+// IMPROVEMENT #2: Draw ground plane
+// =============================================
+void renderGround() {
+    glDisable(GL_LIGHTING);
+    // Dark green-grey ground covering full maze
+    glBegin(GL_QUADS);
+    glColor3f(0.22f, 0.32f, 0.18f);
+    glVertex3f(0.0f,   -0.01f, 0.0f);
+    glVertex3f((float)MAZE_WIDTH, -0.01f, 0.0f);
+    glVertex3f((float)MAZE_WIDTH, -0.01f, (float)MAZE_HEIGHT);
+    glVertex3f(0.0f,   -0.01f, (float)MAZE_HEIGHT);
+    glEnd();
+
+    // Grid lines for depth perception
+    glLineWidth(1.0f);
+    glBegin(GL_LINES);
+    glColor3f(0.15f, 0.23f, 0.12f);
+    for (int i = 0; i <= MAZE_WIDTH; i++) {
+        glVertex3f((float)i, -0.005f, 0.0f);
+        glVertex3f((float)i, -0.005f, (float)MAZE_HEIGHT);
+    }
+    for (int j = 0; j <= MAZE_HEIGHT; j++) {
+        glVertex3f(0.0f, -0.005f, (float)j);
+        glVertex3f((float)MAZE_WIDTH, -0.005f, (float)j);
+    }
+    glEnd();
+    glEnable(GL_LIGHTING);
+}
+
+// =============================================
+// RENDER MAZE
 // =============================================
 void renderMaze() {
     boardYOffset  = sinf((float)glfwGetTime() * boardAnimSpeed) * 0.06f;
@@ -278,7 +320,6 @@ void renderMaze() {
                 glPopMatrix();
 
             } else if (maze[z][x] == 3) {
-                // === QUIZ CHECKPOINT BOARD ===
                 glPushMatrix();
                 glTranslatef(x+0.5f, boardYOffset, z+0.5f);
                 glRotatef(boardRotation, 0.0f, 1.0f, 0.0f);
@@ -286,56 +327,51 @@ void renderMaze() {
                 GLfloat no_spec[]={0,0,0,1};
                 GLfloat no_shin[]={0};
 
-                // -- Tiang vertikal (coklat kayu) --
                 GLfloat wood[]={0.55f,0.27f,0.07f,1.0f};
                 glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,wood);
                 glMaterialfv(GL_FRONT,GL_SPECULAR,no_spec);
                 glMaterialfv(GL_FRONT,GL_SHININESS,no_shin);
                 glPushMatrix();
-                glTranslatef(0.0f, 0.1f, 0.0f);
-                glScalef(0.08f, 1.0f, 0.08f);
+                glTranslatef(0.0f,0.1f,0.0f);
+                glScalef(0.08f,1.0f,0.08f);
                 drawCube(1.0f);
                 glPopMatrix();
 
-                // -- Board kayu (papan) --
                 GLfloat darkwood[]={0.4f,0.2f,0.05f,1.0f};
                 glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,darkwood);
                 glPushMatrix();
-                glTranslatef(0.0f, 0.72f, 0.04f);
-                glScalef(0.7f, 0.45f, 0.06f);
+                glTranslatef(0.0f,0.72f,0.04f);
+                glScalef(0.7f,0.45f,0.06f);
                 drawCube(1.0f);
                 glPopMatrix();
 
-                // -- Kertas putih di depan board --
                 GLfloat white[]={1.0f,1.0f,1.0f,1.0f};
                 glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,white);
                 glPushMatrix();
-                glTranslatef(0.0f, 0.72f, 0.075f);
-                glScalef(0.58f, 0.35f, 0.01f);
+                glTranslatef(0.0f,0.72f,0.075f);
+                glScalef(0.58f,0.35f,0.01f);
                 drawCube(1.0f);
                 glPopMatrix();
 
-                // -- Garis biru simulasi teks di kertas --
                 GLfloat lineblue[]={0.1f,0.2f,0.8f,1.0f};
                 glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,lineblue);
                 for (int ln=0; ln<4; ln++) {
                     glPushMatrix();
-                    glTranslatef(0.0f, 0.82f - ln*0.07f, 0.082f);
-                    glScalef(0.4f, 0.012f, 0.005f);
+                    glTranslatef(0.0f,0.82f-ln*0.07f,0.082f);
+                    glScalef(0.4f,0.012f,0.005f);
                     drawCube(1.0f);
                     glPopMatrix();
                 }
 
-                // -- Tanda tanya kuning di tengah board --
                 GLfloat yellow[]={1.0f,0.9f,0.0f,1.0f};
                 glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,yellow);
                 glPushMatrix();
-                glTranslatef(0.18f, 0.72f, 0.083f);
-                glScalef(0.06f, 0.18f, 0.005f);
+                glTranslatef(0.18f,0.72f,0.083f);
+                glScalef(0.06f,0.18f,0.005f);
                 drawCube(1.0f);
                 glPopMatrix();
 
-                glPopMatrix(); // end board rotate+translate
+                glPopMatrix();
             }
         }
     }
@@ -347,43 +383,72 @@ void renderMaze() {
 bool keyPressedLastFrame[GLFW_KEY_LAST] = {false};
 
 // =============================================
-// HELPER: apply answer result
+// BUG FIX #2 + #5: Central board removal helper.
+// Called on every quiz exit path (correct, wrong, skip, timeout) so the
+// board is ALWAYS cleared and can never re-trigger.
 // =============================================
-void applyCorrectAnswer() {
-    maze[paperCellZ][paperCellX] = 0;
-    playerScore++;
-    sprintf(scoreString, "Kertas: %d", playerScore);
-    gameStartTime += REWARD_CORRECT; // reduce elapsed time = bonus
-    feedbackState = FB_CORRECT;
-    feedbackTimer = (float)glfwGetTime();
-    questionUsed[activeQuestion] = true;
-    currentQuestionIndex++;
-    printf("[QUIZ] Benar! +1 skor, bonus -%0.0f detik\n", REWARD_CORRECT);
-}
-
-void applyWrongAnswer() {
-    playerLives--;
-    sprintf(livesString, "Lives: %d", playerLives);
-    gameStartTime -= PENALTY_WRONG; // increase elapsed time = penalty
-    feedbackState = FB_WRONG;
-    feedbackTimer = (float)glfwGetTime();
-    printf("[QUIZ] Salah! -%d nyawa, penalti +%0.0f detik\n", 1, PENALTY_WRONG);
-    if (playerLives <= 0) {
-        currentGameState = GAME_OVER;
-        feedbackState = FB_NONE;
+void removeBoard() {
+    if (paperCellZ >= 0 && paperCellX >= 0) {
+        maze[paperCellZ][paperCellX] = 0;
+        printf("[BOARD] Removed board at (%d,%d)\n", paperCellX, paperCellZ);
     }
 }
 
-void applyTimeout() {
+// =============================================
+// HELPER: apply answer results
+// BUG FIX #3: mark question used + advance index here only (one place).
+// BUG FIX #4: use timeOffset instead of touching gameStartTime.
+// BUG FIX #2: call removeBoard() in every branch.
+// =============================================
+void applyCorrectAnswer() {
+    removeBoard();                          // BUG FIX #2
+    playerScore++;
+    sprintf(scoreString, "Kertas: %d", playerScore);
+    timeOffset -= REWARD_CORRECT;           // BUG FIX #4: bonus reduces displayed time
+    feedbackState = FB_CORRECT;
+    feedbackTimer = (float)glfwGetTime();
+    // BUG FIX #3: mark used and advance index exactly once, right here
+    questionUsed[activeQuestion] = true;
+    printf("[QUIZ] Benar! +1 skor, bonus -%.0f detik\n", REWARD_CORRECT);
+}
+
+void applyWrongAnswer() {
+    removeBoard();                          // BUG FIX #2
     playerLives--;
     sprintf(livesString, "Lives: %d", playerLives);
-    gameStartTime -= PENALTY_WRONG;
+    timeOffset += PENALTY_WRONG;            // BUG FIX #4
     feedbackState = FB_WRONG;
     feedbackTimer = (float)glfwGetTime();
-    printf("[QUIZ] Waktu habis! -%d nyawa\n", 1);
+    // BUG FIX #3: mark used and advance — wrong answer consumes the question
+    questionUsed[activeQuestion] = true;
+    printf("[QUIZ] Salah! -1 nyawa, penalti +%.0f detik\n", PENALTY_WRONG);
     if (playerLives <= 0) {
         currentGameState = GAME_OVER;
-        feedbackState = FB_NONE;
+        feedbackState    = FB_NONE;         // clear feedback so game-over screen shows clean
+    }
+}
+
+void applySkip() {
+    removeBoard();                          // BUG FIX #2
+    timeOffset += PENALTY_SKIP;            // BUG FIX #4
+    // BUG FIX #1: mark skipped question as used so it won't reappear
+    questionUsed[activeQuestion] = true;
+    printf("[QUIZ] Dilewati. Penalti +%.0f detik\n", PENALTY_SKIP);
+}
+
+void applyTimeout() {
+    removeBoard();                          // BUG FIX #2
+    playerLives--;
+    sprintf(livesString, "Lives: %d", playerLives);
+    timeOffset += PENALTY_WRONG;            // BUG FIX #4
+    feedbackState = FB_WRONG;
+    feedbackTimer = (float)glfwGetTime();
+    // BUG FIX #3: mark used and advance
+    questionUsed[activeQuestion] = true;
+    printf("[QUIZ] Waktu habis! -1 nyawa\n");
+    if (playerLives <= 0) {
+        currentGameState = GAME_OVER;
+        feedbackState    = FB_NONE;
     }
 }
 
@@ -396,175 +461,214 @@ void processInput(GLFWwindow* window) {
     float deltaTime = currentTime - lastTime;
     lastTime = currentTime;
 
-    // --- TITLE SCREEN ---
+    // ---- TITLE SCREEN ----
     if (currentGameState == TITLE_SCREEN) {
         if (glfwGetKey(window,GLFW_KEY_P)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_P]) {
+            // BUG FIX #7: always restore maze from mazeCopy on new game
+            copyMazeArray(maze, mazeCopy);
             currentGameState = PLAYING;
             gameStarted = false; gameCompleted = false;
-            playerScore = 0; playerLives = MAX_LIVES;
+            playerScore = 0;     playerLives  = MAX_LIVES;
             feedbackState = FB_NONE;
             quizJustExited = false;
+            timeOffset    = 0.0f;
             gameStartTime = currentTime;
             sprintf(timeString,  "Time: 0.00");
             sprintf(scoreString, "Kertas: 0");
             sprintf(livesString, "Lives: %d", playerLives);
             playerX=1.5f; playerY=0.0f; playerZ=1.5f; playerAngle=0.0f;
             shuffleQuestions();
-            keyPressedLastFrame[GLFW_KEY_P]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_P)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_P]=false;
+            keyPressedLastFrame[GLFW_KEY_P] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_P)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_P] = false;
+        }
 
         bool shift = glfwGetKey(window,GLFW_KEY_LEFT_SHIFT)==GLFW_PRESS ||
                      glfwGetKey(window,GLFW_KEY_RIGHT_SHIFT)==GLFW_PRESS;
         if (glfwGetKey(window,GLFW_KEY_SLASH)==GLFW_PRESS && shift && !keyPressedLastFrame[GLFW_KEY_SLASH]) {
-            currentGameState=RULES_SCREEN; keyPressedLastFrame[GLFW_KEY_SLASH]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_SLASH)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_SLASH]=false;
-
-        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS) glfwSetWindowShouldClose(window,GL_TRUE);
-        return;
-    }
-
-    // --- RULES SCREEN ---
-    if (currentGameState == RULES_SCREEN) {
-        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
-            currentGameState=TITLE_SCREEN; keyPressedLastFrame[GLFW_KEY_B]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_B]=false;
-        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS) glfwSetWindowShouldClose(window,GL_TRUE);
-        return;
-    }
-
-    // --- GAME OVER ---
-    if (currentGameState == GAME_OVER) {
-        if (glfwGetKey(window,GLFW_KEY_R)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_R]) {
-            playerX=1.5f; playerY=0.0f; playerZ=1.5f; playerAngle=0.0f;
-            gameStarted=false; gameCompleted=false;
-            playerScore=0; playerLives=MAX_LIVES;
-            feedbackState=FB_NONE; quizJustExited=false;
-            currentQuestionIndex=0;
-            currentGameState=PLAYING;
-            gameStartTime=currentTime;
-            sprintf(timeString,"Time: 0.00");
-            sprintf(scoreString,"Kertas: 0");
-            sprintf(livesString,"Lives: %d",playerLives);
-            copyMazeArray(maze,mazeCopy);
-            shuffleQuestions();
-            keyPressedLastFrame[GLFW_KEY_R]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_R)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_R]=false;
-
-        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
-            currentGameState=TITLE_SCREEN; keyPressedLastFrame[GLFW_KEY_B]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_B]=false;
-        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS) glfwSetWindowShouldClose(window,GL_TRUE);
-        return;
-    }
-
-    // --- COMPLETED ---
-    if (currentGameState == COMPLETED || gameCompleted) {
-        if (glfwGetKey(window,GLFW_KEY_R)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_R]) {
-            playerX=1.5f; playerY=0.0f; playerZ=1.5f; playerAngle=0.0f;
-            gameStarted=false; gameCompleted=false;
-            playerScore=0; playerLives=MAX_LIVES;
-            feedbackState=FB_NONE; quizJustExited=false;
-            currentQuestionIndex=0;
-            currentGameState=PLAYING;
-            gameStartTime=currentTime;
-            sprintf(timeString,"Time: 0.00");
-            sprintf(scoreString,"Kertas: 0");
-            sprintf(livesString,"Lives: %d",playerLives);
-            copyMazeArray(maze,mazeCopy);
-            shuffleQuestions();
-            keyPressedLastFrame[GLFW_KEY_R]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_R)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_R]=false;
-
-        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
-            currentGameState=TITLE_SCREEN; keyPressedLastFrame[GLFW_KEY_B]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_B]=false;
-        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS) glfwSetWindowShouldClose(window,GL_TRUE);
-        return;
-    }
-
-    // --- QUIZ SCREEN (movement LOCKED) ---
-    if (currentGameState == QUIZ_SCREEN) {
-        Question& q = questions[activeQuestion];
-
-        // Timer check
-        float remaining = quizTimeLimit - (currentTime - quizStartTime);
-        if (remaining <= 0.0f) {
-            applyTimeout();
-            quizJustExited = true;
-            quizCooldownTimer = currentTime;
-            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
-            return;
+            currentGameState = RULES_SCREEN;
+            keyPressedLastFrame[GLFW_KEY_SLASH] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_SLASH)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_SLASH] = false;
         }
 
-        // Wait for feedback animation before accepting new input
+        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        return;
+    }
+
+    // ---- RULES SCREEN ----
+    if (currentGameState == RULES_SCREEN) {
+        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
+            currentGameState = TITLE_SCREEN;
+            keyPressedLastFrame[GLFW_KEY_B] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_B] = false;
+        }
+        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        return;
+    }
+
+    // ---- GAME OVER ----
+    if (currentGameState == GAME_OVER) {
+        if (glfwGetKey(window,GLFW_KEY_R)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_R]) {
+            copyMazeArray(maze, mazeCopy);
+            playerX=1.5f; playerY=0.0f; playerZ=1.5f; playerAngle=0.0f;
+            gameStarted=false; gameCompleted=false;
+            playerScore=0;     playerLives=MAX_LIVES;
+            feedbackState=FB_NONE; quizJustExited=false;
+            timeOffset=0.0f;
+            currentGameState=PLAYING;
+            gameStartTime=currentTime;
+            sprintf(timeString,"Time: 0.00");
+            sprintf(scoreString,"Kertas: 0");
+            sprintf(livesString,"Lives: %d",playerLives);
+            shuffleQuestions();
+            keyPressedLastFrame[GLFW_KEY_R] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_R)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_R] = false;
+        }
+        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
+            currentGameState=TITLE_SCREEN;
+            keyPressedLastFrame[GLFW_KEY_B] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_B] = false;
+        }
+        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        return;
+    }
+
+    // ---- COMPLETED ----
+    if (currentGameState == COMPLETED || gameCompleted) {
+        if (glfwGetKey(window,GLFW_KEY_R)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_R]) {
+            copyMazeArray(maze, mazeCopy);
+            playerX=1.5f; playerY=0.0f; playerZ=1.5f; playerAngle=0.0f;
+            gameStarted=false; gameCompleted=false;
+            playerScore=0;     playerLives=MAX_LIVES;
+            feedbackState=FB_NONE; quizJustExited=false;
+            timeOffset=0.0f;
+            currentGameState=PLAYING;
+            gameStartTime=currentTime;
+            sprintf(timeString,"Time: 0.00");
+            sprintf(scoreString,"Kertas: 0");
+            sprintf(livesString,"Lives: %d",playerLives);
+            shuffleQuestions();
+            keyPressedLastFrame[GLFW_KEY_R] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_R)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_R] = false;
+        }
+        if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
+            currentGameState=TITLE_SCREEN;
+            keyPressedLastFrame[GLFW_KEY_B] = true;
+        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_B] = false;
+        }
+        if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        return;
+    }
+
+    // ---- QUIZ SCREEN (movement LOCKED) ----
+    if (currentGameState == QUIZ_SCREEN) {
+        // =============================================
+        // FIX #1 — QUIZ STATE STUCK: SINGLE exit point.
+        // ALL state transitions from QUIZ_SCREEN go through here ONLY.
+        // Answer blocks below do NOT set currentGameState directly.
+        // =============================================
         if (feedbackState != FB_NONE) {
             if (currentTime - feedbackTimer >= FEEDBACK_DURATION) {
                 feedbackState = FB_NONE;
-                if (currentGameState == QUIZ_SCREEN) currentGameState = PLAYING;
+                currentGameState = PLAYING;
             }
+            return; // input blocked during feedback animation
+        }
+
+        // Timer check (only when no feedback is active)
+        float remaining = quizTimeLimit - (currentTime - quizStartTime);
+        if (remaining <= 0.0f) {
+            applyTimeout();
+            quizJustExited    = true;
+            quizCooldownTimer = currentTime;
+            // If game-over triggered inside applyTimeout, keep that state.
+            // Otherwise wait for feedback to finish before returning to PLAYING.
+            if (currentGameState == GAME_OVER) return;
+            // feedbackState is FB_WRONG — will be cleared by the block above next frame
             return;
         }
 
-        // Answer A
+        Question& q = questions[activeQuestion];
+
+        // Answer A — FIX #1: NO currentGameState = PLAYING here
         if (glfwGetKey(window,GLFW_KEY_A)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_A]) {
             if (q.correct==0) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited=true; quizCooldownTimer=currentTime;
-            if (currentGameState!=GAME_OVER && feedbackState==FB_NONE) currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_A]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_A)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_A]=false;
+        } else if (glfwGetKey(window,GLFW_KEY_A)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_A]=false;
+        }
 
         // Answer B
         if (glfwGetKey(window,GLFW_KEY_B)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
             if (q.correct==1) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited=true; quizCooldownTimer=currentTime;
-            if (currentGameState!=GAME_OVER && feedbackState==FB_NONE) currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_B]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_B]=false;
+        } else if (glfwGetKey(window,GLFW_KEY_B)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_B]=false;
+        }
 
         // Answer C
         if (glfwGetKey(window,GLFW_KEY_C)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_C]) {
             if (q.correct==2) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited=true; quizCooldownTimer=currentTime;
-            if (currentGameState!=GAME_OVER && feedbackState==FB_NONE) currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_C]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_C)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_C]=false;
+        } else if (glfwGetKey(window,GLFW_KEY_C)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_C]=false;
+        }
 
         // Answer D
         if (glfwGetKey(window,GLFW_KEY_D)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_D]) {
             if (q.correct==3) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited=true; quizCooldownTimer=currentTime;
-            if (currentGameState!=GAME_OVER && feedbackState==FB_NONE) currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_D]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_D)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_D]=false;
+        } else if (glfwGetKey(window,GLFW_KEY_D)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_D]=false;
+        }
 
-        // Skip (E) - small penalty, NO life loss
+        // Skip (E) — no feedback animation for skip, transition immediately
         if (glfwGetKey(window,GLFW_KEY_E)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_E]) {
-            gameStartTime -= PENALTY_SKIP;
-            printf("[QUIZ] Dilewati. Penalti +%.0f detik\n", PENALTY_SKIP);
+            applySkip();
             quizJustExited=true; quizCooldownTimer=currentTime;
             currentGameState=PLAYING;
             keyPressedLastFrame[GLFW_KEY_E]=true;
-        } else if (glfwGetKey(window,GLFW_KEY_E)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_E]=false;
+        } else if (glfwGetKey(window,GLFW_KEY_E)==GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_E]=false;
+        }
 
         return; // movement LOCKED in quiz
     }
 
-    // --- PLAYING ---
-    float adjSpd    = playerSpeed    * deltaTime * 60.0f;
-    float adjRotSpd = rotationSpeed  * deltaTime * 60.0f;
+    // ---- PLAYING ----
+    float adjSpd    = playerSpeed   * deltaTime * 60.0f;
+    float adjRotSpd = rotationSpeed * deltaTime * 60.0f;
 
-    // Feedback overlay timer (shown during PLAYING after returning from quiz)
+    // Feedback overlay timer — clear only after full duration
     if (feedbackState != FB_NONE && currentTime - feedbackTimer >= FEEDBACK_DURATION)
         feedbackState = FB_NONE;
 
-    // Quiz cooldown (prevent re-trigger)
+    // Quiz cooldown expiry
     if (quizJustExited && currentTime - quizCooldownTimer >= QUIZ_COOLDOWN)
         quizJustExited = false;
 
     if (!gameStarted && (
-        glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS || glfwGetKey(window,GLFW_KEY_S)==GLFW_PRESS ||
-        glfwGetKey(window,GLFW_KEY_A)==GLFW_PRESS || glfwGetKey(window,GLFW_KEY_D)==GLFW_PRESS)) {
-        gameStarted=true; gameStartTime=currentTime;
+        glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS ||
+        glfwGetKey(window,GLFW_KEY_S)==GLFW_PRESS ||
+        glfwGetKey(window,GLFW_KEY_A)==GLFW_PRESS ||
+        glfwGetKey(window,GLFW_KEY_D)==GLFW_PRESS)) {
+        gameStarted   = true;
+        gameStartTime = currentTime;
+        timeOffset    = 0.0f;
     }
 
     if (glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS) {
@@ -586,26 +690,31 @@ void processInput(GLFWwindow* window) {
     if (cellX>=0 && cellX<MAZE_WIDTH && cellZ>=0 && cellZ<MAZE_HEIGHT) {
         // Goal reached
         if (maze[cellZ][cellX]==2 && !gameCompleted) {
-            gameCompleted=true; currentGameState=COMPLETED;
-            float finalT = currentGameTime - (REWARD_CORRECT * playerScore);
-            sprintf(congratsMessage, "Selesai dalam %.2f detik (raw)", currentGameTime);
+            gameCompleted    = true;
+            currentGameState = COMPLETED;
+            float rawTime = (currentTime - gameStartTime);
+            float finalT  = rawTime + timeOffset;
+            sprintf(congratsMessage, "Selesai dalam %.2f detik (raw)", rawTime);
             sprintf(finalscore,      "Kertas Dikumpulkan: %d", playerScore);
             sprintf(finaltime,       "Waktu Final: %.2f detik", finalT);
         }
 
-        // Quiz board trigger — PREVENT RE-TRIGGER
         if (maze[cellZ][cellX]==3 && isNearBoard(playerX,playerZ,cellX,cellZ) && !quizJustExited) {
-            paperCellX=cellX; paperCellZ=cellZ;
-            activeQuestion=getNextQuestion();
-            quizStartTime=currentTime;
-            currentGameState=QUIZ_SCREEN;
-            feedbackState=FB_NONE;
+            paperCellX = cellX;
+            paperCellZ = cellZ;
+            activeQuestion   = getNextQuestion();
+            quizStartTime    = currentTime;
+            currentGameState = QUIZ_SCREEN;
+            feedbackState    = FB_NONE;
         }
     }
 
     if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_ESCAPE]) {
-        currentGameState=TITLE_SCREEN; keyPressedLastFrame[GLFW_KEY_ESCAPE]=true;
-    } else if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_RELEASE) keyPressedLastFrame[GLFW_KEY_ESCAPE]=false;
+        currentGameState = TITLE_SCREEN;
+        keyPressedLastFrame[GLFW_KEY_ESCAPE] = true;
+    } else if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_RELEASE) {
+        keyPressedLastFrame[GLFW_KEY_ESCAPE] = false;
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -617,6 +726,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 // =============================================
 // RENDER TITLE SCREEN
+// IMPROVEMENT #3: Added credits at bottom
 // =============================================
 void renderTitleScreen() {
     glDisable(GL_LIGHTING); glDisable(GL_DEPTH_TEST);
@@ -625,12 +735,11 @@ void renderTitleScreen() {
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
 
     glBegin(GL_QUADS);
-    glColor3f(0.05f,0.05f,0.2f); glVertex2f(0,0); glVertex2f(WIDTH,0);
+    glColor3f(0.05f,0.05f,0.2f); glVertex2f(0,0);      glVertex2f(WIDTH,0);
     glColor3f(0.2f,0.2f,0.5f);   glVertex2f(WIDTH,HEIGHT); glVertex2f(0,HEIGHT);
     glEnd();
 
     int cx=WIDTH/2, cy=HEIGHT/2;
-
     glColor3f(1.0f,0.8f,0.0f);
     char t1[]="MAZE3D - QUIZ CHALLENGE";
     glRasterPos2i(cx-(int)(strlen(t1)*7), cy+90);
@@ -654,6 +763,22 @@ void renderTitleScreen() {
     glVertex2f(cx-250,cy-110); glVertex2f(cx+250,cy-110);
     glVertex2f(cx+250,cy+120); glVertex2f(cx-250,cy+120);
     glEnd(); glLineWidth(1.0f);
+
+    // =============================================
+    // IMPROVEMENT #3: Credits text at bottom
+    // =============================================
+    glColor3f(0.65f, 0.65f, 0.65f);
+    const char* credits[] = {
+        "Adhyaksa M. Banjar Nahor - 24060124140152",
+        "Raihan Lazuardi           - 24060124140178",
+        "Ganendra Satya Sindhunata - 24060124120025"
+    };
+    for (int i = 0; i < 3; i++) {
+        int tw = (int)(strlen(credits[i]) * 6);
+        glRasterPos2i(cx - tw/2, 14 + i*16);
+        for (int j = 0; credits[i][j]; j++)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, credits[i][j]);
+    }
 
     glMatrixMode(GL_PROJECTION); glPopMatrix();
     glMatrixMode(GL_MODELVIEW);  glPopMatrix();
@@ -698,9 +823,9 @@ void renderRulesScreen() {
         "Press B untuk kembali"
     };
     for(int i=0;i<15;i++) {
-        if(i==7) glColor3f(1.0f,0.5f,0.5f);
+        if(i==7)       glColor3f(1.0f,0.5f,0.5f);
         else if(i==12) glColor3f(0.5f,1.0f,0.5f);
-        else glColor3f(1,1,1);
+        else           glColor3f(1,1,1);
         glRasterPos2i(60, HEIGHT-90-i*28);
         for(int j=0;lines[i][j];j++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,lines[i][j]);
     }
@@ -711,7 +836,7 @@ void renderRulesScreen() {
 }
 
 // =============================================
-// RENDER HUD (timer + score + lives)
+// RENDER HUD
 // =============================================
 void renderHUD() {
     glDisable(GL_LIGHTING);
@@ -719,7 +844,6 @@ void renderHUD() {
     glOrtho(0,WIDTH,HEIGHT,0,-1,1);
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
 
-    // Background strip
     glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glBegin(GL_QUADS);
     glColor4f(0,0,0,0.5f);
@@ -734,10 +858,9 @@ void renderHUD() {
     glRasterPos2i(10,38);
     for(int i=0;scoreString[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,scoreString[i]);
 
-    // Lives as hearts
     glColor3f(1.0f,0.3f,0.3f);
-    char heartFull[]  = "[♥]";
-    char heartEmpty[] = "[♡]";
+    char heartFull[]  = "[v]";
+    char heartEmpty[] = "[ ]";
     int lx = WIDTH - 160;
     for(int i=0;i<MAX_LIVES;i++) {
         glRasterPos2i(lx + i*50, 28);
@@ -753,13 +876,17 @@ void renderHUD() {
 
 // =============================================
 // RENDER VISUAL FEEDBACK OVERLAY
+// IMPROVEMENT #4: Larger feedback text for readability
 // =============================================
 void renderFeedbackOverlay() {
     if (feedbackState == FB_NONE) return;
     float elapsed = (float)glfwGetTime() - feedbackTimer;
-    if (elapsed >= FEEDBACK_DURATION) { feedbackState=FB_NONE; return; }
+    if (elapsed >= FEEDBACK_DURATION) {
+        feedbackState = FB_NONE;
+        return;
+    }
 
-    float alpha = 0.45f * (1.0f - elapsed/FEEDBACK_DURATION); // fade out
+    float alpha = 0.45f * (1.0f - elapsed/FEEDBACK_DURATION);
 
     glDisable(GL_LIGHTING); glDisable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
@@ -774,12 +901,26 @@ void renderFeedbackOverlay() {
     glEnd();
     glDisable(GL_BLEND);
 
-    // Big text
-    glColor3f(1,1,1);
-    const char* msg = (feedbackState==FB_CORRECT) ? "BENAR! +1 Skor" : "SALAH! -1 Nyawa";
-    int len = strlen(msg);
-    glRasterPos2i(WIDTH/2 - len*7, HEIGHT/2+10);
+    // IMPROVEMENT #4: Larger, bolder feedback message
+    const char* msg    = (feedbackState==FB_CORRECT) ? "BENAR! +1 Skor" : "SALAH! -1 Nyawa";
+    const char* submsg = (feedbackState==FB_CORRECT) ? "Bonus -3 detik!" : "Penalti +5 detik";
+    int len    = (int)strlen(msg);
+    int sublen = (int)strlen(submsg);
+
+    // Shadow for readability
+    glColor3f(0.0f,0.0f,0.0f);
+    glRasterPos2i(WIDTH/2 - len*11 + 2, HEIGHT/2 + 12);
     for(int i=0;msg[i];i++) glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,msg[i]);
+
+    // Main text
+    glColor3f(1,1,1);
+    glRasterPos2i(WIDTH/2 - len*11, HEIGHT/2 + 14);
+    for(int i=0;msg[i];i++) glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,msg[i]);
+
+    // Sub-message
+    glColor3f(0.9f,0.9f,0.9f);
+    glRasterPos2i(WIDTH/2 - sublen*5, HEIGHT/2 - 12);
+    for(int i=0;submsg[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,submsg[i]);
 
     glMatrixMode(GL_PROJECTION); glPopMatrix();
     glMatrixMode(GL_MODELVIEW);  glPopMatrix();
@@ -788,6 +929,7 @@ void renderFeedbackOverlay() {
 
 // =============================================
 // RENDER QUIZ SCREEN
+// IMPROVEMENT #4: Slightly improved option readability
 // =============================================
 void renderQuizScreen() {
     glDisable(GL_LIGHTING); glDisable(GL_DEPTH_TEST);
@@ -795,65 +937,67 @@ void renderQuizScreen() {
     glOrtho(0,WIDTH,0,HEIGHT,-1,1);
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
 
-    // Semi-transparent dark overlay
+    // Panel background
     glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glBegin(GL_QUADS);
-    glColor4f(0.03f,0.03f,0.15f,0.94f);
+    glColor4f(0.03f,0.03f,0.15f,0.96f);
     glVertex2f(50,50); glVertex2f(750,50); glVertex2f(750,550); glVertex2f(50,550);
     glEnd(); glDisable(GL_BLEND);
 
-    // Border (color by difficulty)
     Question& q=questions[activeQuestion];
-    if(q.difficulty==0)      glColor3f(0.3f,1.0f,0.3f);   // easy=green
-    else if(q.difficulty==1) glColor3f(1.0f,0.7f,0.1f);   // medium=orange
-    else                     glColor3f(1.0f,0.2f,0.2f);   // hard=red
+    if(q.difficulty==0)      glColor3f(0.3f,1.0f,0.3f);
+    else if(q.difficulty==1) glColor3f(1.0f,0.7f,0.1f);
+    else                     glColor3f(1.0f,0.2f,0.2f);
     glLineWidth(4.0f);
     glBegin(GL_LINE_LOOP);
     glVertex2f(50,50); glVertex2f(750,50); glVertex2f(750,550); glVertex2f(50,550);
     glEnd(); glLineWidth(1.0f);
 
-    // Difficulty label
     const char* diffLabel[]={"[ MUDAH ]","[ SEDANG ]","[ SULIT ]"};
     GLfloat diffClr[3][3]={{0.3f,1.0f,0.3f},{1.0f,0.7f,0.1f},{1.0f,0.3f,0.3f}};
     glColor3fv(diffClr[q.difficulty]);
     glRasterPos2i(WIDTH/2-(int)(strlen(diffLabel[q.difficulty])*6),525);
     for(int i=0;diffLabel[q.difficulty][i];i++) glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,diffLabel[q.difficulty][i]);
 
-    // Question number
     char numText[32];
-    sprintf(numText,"Soal %d / %d",currentQuestionIndex+1,TOTAL_QUESTIONS);
+    sprintf(numText,"Soal %d / %d", currentQuestionIndex+1, TOTAL_QUESTIONS);
     glColor3f(0.7f,0.7f,0.7f);
     glRasterPos2i(590,525);
     for(int i=0;numText[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,numText[i]);
 
-    // Question text (word-wrap simple: just display)
-    glColor3f(1,1,1);
+    // Question text — bright white for clear readability
+    glColor3f(1.0f,1.0f,0.9f);
     glRasterPos2i(80,475);
     for(int i=0;q.question[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,q.question[i]);
 
-    // Answer options
+    // IMPROVEMENT #4: Slightly larger option backgrounds and clearer key labels
     GLfloat optClr[4][3]={{0.3f,1.0f,0.4f},{0.3f,0.6f,1.0f},{1.0f,0.85f,0.2f},{1.0f,0.4f,0.5f}};
     const char* keys[]={"[A]","[B]","[C]","[D]"};
     for(int i=0;i<4;i++) {
-        // Option background box
+        int oy=395-i*68;
+        // Option background — slightly taller for readability
         glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
         glBegin(GL_QUADS);
-        glColor4f(optClr[i][0]*0.3f, optClr[i][1]*0.3f, optClr[i][2]*0.3f, 0.6f);
-        int oy=390-i*65;
-        glVertex2f(75,oy-5); glVertex2f(725,oy-5); glVertex2f(725,oy+28); glVertex2f(75,oy+28);
-        glEnd(); glDisable(GL_BLEND);
+        glColor4f(optClr[i][0]*0.25f, optClr[i][1]*0.25f, optClr[i][2]*0.25f, 0.75f);
+        glVertex2f(75,oy-7); glVertex2f(725,oy-7); glVertex2f(725,oy+30); glVertex2f(75,oy+30);
+        glEnd();
+        // Subtle left accent bar
+        glBegin(GL_QUADS);
+        glColor4f(optClr[i][0],optClr[i][1],optClr[i][2],0.9f);
+        glVertex2f(75,oy-7); glVertex2f(82,oy-7); glVertex2f(82,oy+30); glVertex2f(75,oy+30);
+        glEnd();
+        glDisable(GL_BLEND);
 
         glColor3fv(optClr[i]);
-        glRasterPos2i(85,390-i*65);
+        glRasterPos2i(90,oy);
         for(int j=0;keys[i][j];j++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,keys[i][j]);
-        glColor3f(1,1,1);
-        glRasterPos2i(125,390-i*65);
+        glColor3f(1.0f,1.0f,1.0f);
+        glRasterPos2i(132,oy);
         for(int j=0;q.options[i][j];j++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,q.options[i][j]);
     }
 
-    // Timer countdown
-    float remaining=quizTimeLimit-((float)glfwGetTime()-quizStartTime);
-    if(remaining<0)remaining=0;
+    float remaining = quizTimeLimit - ((float)glfwGetTime() - quizStartTime);
+    if(remaining<0) remaining=0;
     char timerTxt[32]; sprintf(timerTxt,"%.1f detik",remaining);
     if(remaining<5.0f)      glColor3f(1.0f,0.2f,0.2f);
     else if(remaining<8.0f) glColor3f(1.0f,0.7f,0.1f);
@@ -861,7 +1005,6 @@ void renderQuizScreen() {
     glRasterPos2i(570,90);
     for(int i=0;timerTxt[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,timerTxt[i]);
 
-    // Timer bar (gradient)
     float frac=remaining/quizTimeLimit; if(frac<0)frac=0;
     glBegin(GL_QUADS);
     if(frac>0.5f)       glColor3f(0.2f,0.85f,0.3f);
@@ -875,13 +1018,11 @@ void renderQuizScreen() {
     glVertex2f(80,75); glVertex2f(690,75); glVertex2f(690,92); glVertex2f(80,92);
     glEnd();
 
-    // Skip hint
     glColor3f(0.7f,0.7f,0.3f);
     char skipTxt[]="[E] Lewati (+2 detik penalti, tanpa kehilangan nyawa)";
     glRasterPos2i(80,60);
     for(int i=0;skipTxt[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,skipTxt[i]);
 
-    // Feedback overlay (within quiz)
     renderFeedbackOverlay();
 
     glMatrixMode(GL_PROJECTION); glPopMatrix();
@@ -898,7 +1039,6 @@ void renderGameOverScreen() {
     glOrtho(0,WIDTH,0,HEIGHT,-1,1);
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
 
-    // Pulsing red background
     float pulse=(sinf((float)glfwGetTime()*2.0f)+1.0f)*0.5f;
     glBegin(GL_QUADS);
     glColor3f(0.25f+pulse*0.1f,0.0f,0.0f);
@@ -913,14 +1053,13 @@ void renderGameOverScreen() {
     glEnd(); glLineWidth(1.0f);
 
     int cx=WIDTH/2, cy=HEIGHT/2;
-
     glColor3f(1.0f,0.1f,0.1f);
     char goText[]="GAME OVER";
     glRasterPos2i(cx-(int)(strlen(goText)*11), cy+100);
     for(int i=0;goText[i];i++) glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,goText[i]);
 
     glColor3f(1.0f,1.0f,1.0f);
-    char t1[64]; sprintf(t1,"Waktu: %.2f detik",currentGameTime);
+    char t1[64]; sprintf(t1,"Waktu: %.2f detik", currentGameTime);
     glRasterPos2i(cx-(int)(strlen(t1)*5), cy+40);
     for(int i=0;t1[i];i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,t1[i]);
 
@@ -949,7 +1088,7 @@ void renderCongratsScreen() {
 
     glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glBegin(GL_QUADS);
-    glColor4f(0.0f,0.0f,0.3f,0.9f); glVertex2f(0,0); glVertex2f(WIDTH,0);
+    glColor4f(0.0f,0.0f,0.3f,0.9f); glVertex2f(0,0);      glVertex2f(WIDTH,0);
     glColor4f(0.1f,0.2f,0.5f,0.9f); glVertex2f(WIDTH,HEIGHT); glVertex2f(0,HEIGHT);
     glEnd();
 
@@ -983,8 +1122,9 @@ void renderCongratsScreen() {
     for(int i=0;i<20;i++){
         float osc=(sinf((float)glfwGetTime()*3.0f+i)+1.0f)*0.5f;
         glColor3f(1.0f,osc,osc); glVertex2f(sp[i][0],sp[i][1]);
-        sp[i][0]+=sinf((float)glfwGetTime()*2.0f+i)*2.0f; sp[i][1]+=cosf((float)glfwGetTime()*2.0f+i)*2.0f;
-        if(sp[i][0]<0)sp[i][0]=WIDTH; if(sp[i][0]>WIDTH)sp[i][0]=0;
+        sp[i][0]+=sinf((float)glfwGetTime()*2.0f+i)*2.0f;
+        sp[i][1]+=cosf((float)glfwGetTime()*2.0f+i)*2.0f;
+        if(sp[i][0]<0)sp[i][0]=WIDTH;  if(sp[i][0]>WIDTH)sp[i][0]=0;
         if(sp[i][1]<0)sp[i][1]=HEIGHT; if(sp[i][1]>HEIGHT)sp[i][1]=0;
     }
     glEnd(); glPointSize(1.0f);
@@ -1005,7 +1145,7 @@ int main() {
 
     if (!glfwInit()) { fprintf(stderr,"GLFW init failed\n"); return -1; }
 
-    currentGameState=TITLE_SCREEN;
+    currentGameState = TITLE_SCREEN;
 
     GLFWwindow* window=glfwCreateWindow(WIDTH,HEIGHT,"3D Maze Quiz Challenge",NULL,NULL);
     if (!window) { fprintf(stderr,"Window creation failed\n"); glfwTerminate(); return -1; }
@@ -1016,7 +1156,8 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE); glCullFace(GL_BACK);
 
-    copyMazeArray(mazeCopy,maze);
+    // BUG FIX #7: save master copy before any gameplay modifies maze[]
+    copyMazeArray(mazeCopy, maze);
     shuffleQuestions();
 
     glEnable(GL_LIGHTING); glEnable(GL_LIGHT0);
@@ -1039,6 +1180,7 @@ int main() {
     glMaterialfv(GL_FRONT,GL_SHININESS,mShn);
 
     gameStartTime=(float)glfwGetTime();
+    timeOffset=0.0f;
     sprintf(timeString, "Time: 0.00");
     sprintf(scoreString,"Kertas: 0");
     sprintf(livesString,"Lives: %d",playerLives);
@@ -1046,7 +1188,8 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
-        glClearColor(0.53f,0.81f,0.92f,1.0f);
+        // IMPROVEMENT #2: Sky blue clear color for sky/ground visual separation
+        glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
         switch (currentGameState) {
@@ -1060,24 +1203,27 @@ int main() {
 
             case PLAYING:
                 if (gameStarted && !gameCompleted) {
-                    currentGameTime=(float)glfwGetTime()-gameStartTime;
-                    sprintf(timeString,"Time: %.2f",currentGameTime);
-                } else if (!gameStarted && (
-                    glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS ||
-                    glfwGetKey(window,GLFW_KEY_A)==GLFW_PRESS ||
-                    glfwGetKey(window,GLFW_KEY_S)==GLFW_PRESS ||
-                    glfwGetKey(window,GLFW_KEY_D)==GLFW_PRESS)) {
-                    gameStarted=true;
-                    gameStartTime=(float)glfwGetTime();
+                    float rawElapsed = (float)glfwGetTime() - gameStartTime;
+                    currentGameTime  = rawElapsed + timeOffset;
+                    if (currentGameTime < 0.0f) currentGameTime = 0.0f;
+                    sprintf(timeString,"Time: %.2f", currentGameTime);
                 }
                 setupCamera();
+                renderGround();   // IMPROVEMENT #2: draw ground plane
                 renderMaze();
                 renderHUD();
                 renderFeedbackOverlay();
                 break;
 
             case QUIZ_SCREEN:
+                if (gameStarted && !gameCompleted) {
+                    float rawElapsed = (float)glfwGetTime() - gameStartTime;
+                    currentGameTime  = rawElapsed + timeOffset;
+                    if (currentGameTime < 0.0f) currentGameTime = 0.0f;
+                    sprintf(timeString,"Time: %.2f", currentGameTime);
+                }
                 setupCamera();
+                renderGround();   // IMPROVEMENT #2: ground visible behind quiz overlay
                 renderMaze();
                 renderHUD();
                 renderQuizScreen();
