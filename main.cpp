@@ -12,31 +12,22 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-// =============================================
-// BUG FIX #4 — Replace gameStartTime manipulation with a stable offset.
-// currentGameTime = (glfwGetTime() - gameStartTime) + timeOffset
-// Rewards subtract from timeOffset (negative = faster time shown).
-// Penalties add to timeOffset (positive = slower time shown).
-// This keeps glfwGetTime() untouched and the display stable.
-// =============================================
+
 float gameStartTime   = 0.0f;
-float timeOffset      = 0.0f;   // BUG FIX #4: accumulated penalty/reward seconds
+float timeOffset      = 0.0f;   
 float currentGameTime = 0.0f;
 bool  gameStarted     = false;
 char  timeString[32];
 
-// =============================================
-// QUIZ SYSTEM - 10 Questions (Easy/Medium/Hard)
-// =============================================
+
 struct Question {
     const char* question;
     const char* options[4];
-    int correct;    // 0=A, 1=B, 2=C, 3=D
-    int difficulty; // 0=easy, 1=medium, 2=hard
+    int correct;    
+    int difficulty; 
 };
 
 Question questions[] = {
-    // EASY (0-2)
     {"[MATH] Berapa hasil dari 5 + 3 x 2?",
      {"A. 16", "B. 11", "C. 13", "D. 10"}, 1, 0},
     {"[CS] Big-O dari pencarian linear array N?",
@@ -44,7 +35,6 @@ Question questions[] = {
     {"[MATH] Berapa nilai dari 2^8?",
      {"A. 128", "B. 512", "C. 64", "D. 256"}, 3, 0},
 
-    // MEDIUM (3-6)
     {"[MATH] Limit x->0 dari (sin x)/x = ?",
      {"A. 0", "B. Tak terdefinisi", "C. 1", "D. Infinity"}, 2, 1},
     {"[CS] Struktur data LIFO adalah?",
@@ -54,7 +44,6 @@ Question questions[] = {
     {"[CS] Binary dari desimal 42 adalah?",
      {"A. 101010", "B. 100110", "C. 110100", "D. 101100"}, 0, 1},
 
-    // HARD (7-9)
     {"[MATH] Integral dari 1/x dx adalah?",
      {"A. x + C", "B. ln|x| + C", "C. 1/x^2 + C", "D. e^x + C"}, 1, 2},
     {"[CS] Kompleksitas waktu worst-case QuickSort?",
@@ -64,11 +53,11 @@ Question questions[] = {
 };
 const int TOTAL_QUESTIONS = 10;
 
-// Shuffled question order (easy->medium->hard maintained)
+
 int  questionOrder[TOTAL_QUESTIONS];
 bool questionUsed[TOTAL_QUESTIONS];
-int  currentQuestionIndex = 0; // index into questionOrder[]
-int  activeQuestion       = 0; // actual question index shown
+int  currentQuestionIndex = 0; 
+int  activeQuestion       = 0; 
 
 float quizStartTime = 0.0f;
 float quizTimeLimit = 15.0f;
