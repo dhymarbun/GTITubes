@@ -257,28 +257,58 @@ bool isNearBoard(float px, float pz, int x, int z) {
 // =============================================
 void renderGround() {
     glDisable(GL_LIGHTING);
-    // Dark green-grey ground covering full maze
-    glBegin(GL_QUADS);
-    glColor3f(0.22f, 0.32f, 0.18f);
-    glVertex3f(0.0f,   -0.01f, 0.0f);
-    glVertex3f((float)MAZE_WIDTH, -0.01f, 0.0f);
-    glVertex3f((float)MAZE_WIDTH, -0.01f, (float)MAZE_HEIGHT);
-    glVertex3f(0.0f,   -0.01f, (float)MAZE_HEIGHT);
-    glEnd();
 
-    // Grid lines for depth perception
+    for (int x = 0; x < MAZE_WIDTH; x++) {
+        for (int z = 0; z < MAZE_HEIGHT; z++) {
+
+            if ((x + z) % 2 == 0)
+                glColor3f(0.65f, 0.85f, 0.90f); // biru muda
+            else
+                glColor3f(0.35f, 0.65f, 0.75f); // biru agak gelap
+
+            glBegin(GL_QUADS);
+            glVertex3f((float)x,     -0.01f, (float)z);
+            glVertex3f((float)x + 1, -0.01f, (float)z);
+            glVertex3f((float)x + 1, -0.01f, (float)z + 1);
+            glVertex3f((float)x,     -0.01f, (float)z + 1);
+            glEnd();
+        }
+    }
+
+    // Garis pembatas kotak
+    glColor3f(0.05f, 0.05f, 0.05f);
     glLineWidth(1.0f);
+
     glBegin(GL_LINES);
-    glColor3f(0.15f, 0.23f, 0.12f);
     for (int i = 0; i <= MAZE_WIDTH; i++) {
         glVertex3f((float)i, -0.005f, 0.0f);
         glVertex3f((float)i, -0.005f, (float)MAZE_HEIGHT);
     }
+
     for (int j = 0; j <= MAZE_HEIGHT; j++) {
         glVertex3f(0.0f, -0.005f, (float)j);
         glVertex3f((float)MAZE_WIDTH, -0.005f, (float)j);
     }
     glEnd();
+
+    glEnable(GL_LIGHTING);
+}
+
+void renderCeiling()
+{
+    glDisable(GL_LIGHTING);
+
+    glBegin(GL_QUADS);
+
+    glColor3f(0.85f, 0.85f, 0.90f);
+
+    glVertex3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(MAZE_WIDTH, 1.0f, 0.0f);
+    glVertex3f(MAZE_WIDTH, 1.0f, MAZE_HEIGHT);
+    glVertex3f(0.0f, 1.0f, MAZE_HEIGHT);
+
+    glEnd();
+
     glEnable(GL_LIGHTING);
 }
 
@@ -293,12 +323,66 @@ void renderMaze() {
     for (int x=0; x<MAZE_WIDTH; x++) {
         for (int z=0; z<MAZE_HEIGHT; z++) {
             if (maze[z][x] == 1) {
-                GLfloat grey[]={0.5f,0.5f,0.5f,1.0f};
-                glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,grey);
-                glPushMatrix();
-                glTranslatef(x+0.5f,0.5f,z+0.5f);
-                drawCube(1.0f);
-                glPopMatrix();
+    // Warna dasar tembok bata
+    GLfloat brickColor[] = {0.55f, 0.18f, 0.10f, 1.0f};
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, brickColor);
+
+    glPushMatrix();
+    glTranslatef(x + 0.5f, 0.5f, z + 0.5f);
+    drawCube(1.0f);
+    glPopMatrix();
+
+    // Garis-garis bata di atas tembok
+    glDisable(GL_LIGHTING);
+    glColor3f(0.08f, 0.08f, 0.08f);
+
+    glPushMatrix();
+    glTranslatef(x, 0.0f, z);
+
+    // Garis horizontal bata
+    for (float y = 0.2f; y < 1.0f; y += 0.2f) {
+        glBegin(GL_LINES);
+
+        glVertex3f(0.01f, y, -0.001f);
+        glVertex3f(0.99f, y, -0.001f);
+
+        glVertex3f(0.01f, y, 1.001f);
+        glVertex3f(0.99f, y, 1.001f);
+
+        glVertex3f(-0.001f, y, 0.01f);
+        glVertex3f(-0.001f, y, 0.99f);
+
+        glVertex3f(1.001f, y, 0.01f);
+        glVertex3f(1.001f, y, 0.99f);
+
+        glEnd();
+    }
+
+    // Garis vertikal bata
+    for (float y = 0.0f; y < 1.0f; y += 0.2f) {
+        float offset = ((int)(y * 10) % 4 == 0) ? 0.25f : 0.5f;
+
+        for (float a = offset; a < 1.0f; a += 0.5f) {
+            glBegin(GL_LINES);
+
+            glVertex3f(a, y, -0.001f);
+            glVertex3f(a, y + 0.2f, -0.001f);
+
+            glVertex3f(a, y, 1.001f);
+            glVertex3f(a, y + 0.2f, 1.001f);
+
+            glVertex3f(-0.001f, y, a);
+            glVertex3f(-0.001f, y + 0.2f, a);
+
+            glVertex3f(1.001f, y, a);
+            glVertex3f(1.001f, y + 0.2f, a);
+
+            glEnd();
+        }
+    }
+
+    glPopMatrix();
+    glEnable(GL_LIGHTING);
 
             } else if (maze[z][x] == 2) {
                 GLfloat red[]={1.0f,0.0f,0.0f,1.0f};
@@ -321,7 +405,7 @@ void renderMaze() {
                 glMaterialfv(GL_FRONT,GL_SPECULAR,no_spec);
                 glMaterialfv(GL_FRONT,GL_SHININESS,no_shin);
                 glPushMatrix();
-                glTranslatef(0.0f,0.1f,0.0f);
+                glTranslatef(0.0f,0.5f,0.0f);
                 glScalef(0.08f,1.0f,0.08f);
                 drawCube(1.0f);
                 glPopMatrix();
@@ -1202,6 +1286,7 @@ int main() {
                 }
                 setupCamera();
                 renderGround();   // IMPROVEMENT #2: draw ground plane
+                renderCeiling();
                 renderMaze();
                 renderHUD();
                 renderFeedbackOverlay();
@@ -1216,6 +1301,7 @@ int main() {
                 }
                 setupCamera();
                 renderGround();   // IMPROVEMENT #2: ground visible behind quiz overlay
+                renderCeiling();
                 renderMaze();
                 renderHUD();
                 renderQuizScreen();
