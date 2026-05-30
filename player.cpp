@@ -270,17 +270,9 @@ void processInput(GLFWwindow* window) {
     // -----------------------------------------------
     if (currentGameState == QUIZ_SCREEN) {
 
-        // Jika feedback sedang ditampilkan (animasi overlay hijau/merah),
-        // tunggu sampai durasinya habis, lalu baru kembali ke PLAYING.
-        // Semua input DIBLOKIR selama feedback berjalan.
+        // Jika feedback sedang ditampilkan, blok semua input
+        // tapi state sudah PLAYING — return saja.
         if (feedbackState != FB_NONE) {
-            if (currentTime - feedbackTimer >= FEEDBACK_DURATION) {
-                feedbackState = FB_NONE;
-                // Siapkan soal berikutnya SEBELUM kembali ke PLAYING
-                // agar tidak ada frame kosong tanpa soal aktif
-                activeQuestion   = getNextQuestion();
-                currentGameState = PLAYING;
-            }
             return;
         }
 
@@ -290,49 +282,50 @@ void processInput(GLFWwindow* window) {
             applyTimeout();
             quizJustExited    = true;
             quizCooldownTimer = currentTime;
-            // Jika timeout memicu GAME_OVER, biarkan state sudah berubah
-            if (currentGameState == GAME_OVER) return;
-            // Feedback FB_WRONG sudah di-set oleh applyTimeout(),
-            // blok di atas akan handle transisi ke PLAYING setelah animasi selesai
+            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
             return;
         }
 
         Question& q = questions[activeQuestion];
 
-        // Jawaban A
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_A]) {
+        // Jawaban 1
+        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_1]) {
             if (q.correct == 0) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited = true; quizCooldownTimer = currentTime;
-            keyPressedLastFrame[GLFW_KEY_A] = true;
-        } else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE) {
-            keyPressedLastFrame[GLFW_KEY_A] = false;
+            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
+            keyPressedLastFrame[GLFW_KEY_1] = true;
+        } else if (glfwGetKey(window, GLFW_KEY_1) == GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_1] = false;
         }
 
-        // Jawaban B
-        if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_B]) {
+        // Jawaban 2
+        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_2]) {
             if (q.correct == 1) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited = true; quizCooldownTimer = currentTime;
-            keyPressedLastFrame[GLFW_KEY_B] = true;
-        } else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE) {
-            keyPressedLastFrame[GLFW_KEY_B] = false;
+            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
+            keyPressedLastFrame[GLFW_KEY_2] = true;
+        } else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_2] = false;
         }
 
-        // Jawaban C
-        if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_C]) {
+        // Jawaban 3
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_3]) {
             if (q.correct == 2) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited = true; quizCooldownTimer = currentTime;
-            keyPressedLastFrame[GLFW_KEY_C] = true;
-        } else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE) {
-            keyPressedLastFrame[GLFW_KEY_C] = false;
+            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
+            keyPressedLastFrame[GLFW_KEY_3] = true;
+        } else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_3] = false;
         }
 
-        // Jawaban D
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_D]) {
+        // Jawaban 4
+        if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_4]) {
             if (q.correct == 3) applyCorrectAnswer(); else applyWrongAnswer();
             quizJustExited = true; quizCooldownTimer = currentTime;
-            keyPressedLastFrame[GLFW_KEY_D] = true;
-        } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE) {
-            keyPressedLastFrame[GLFW_KEY_D] = false;
+            if (currentGameState != GAME_OVER) currentGameState = PLAYING;
+            keyPressedLastFrame[GLFW_KEY_4] = true;
+        } else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_RELEASE) {
+            keyPressedLastFrame[GLFW_KEY_4] = false;
         }
 
         // Skip (E) — tidak ada feedback overlay, transisi langsung ke PLAYING

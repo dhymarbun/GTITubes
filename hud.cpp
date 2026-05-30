@@ -186,7 +186,7 @@ void renderQuizScreen() {
         {1.0f, 0.85f,0.2f}, // C - kuning
         {1.0f, 0.4f, 0.5f}  // D - merah muda
     };
-    const char* keys[] = {"[A]", "[B]", "[C]", "[D]"};
+    const char* keys[] = {"[1]", "[2]", "[3]", "[4]"};
 
     for (int i = 0; i < 4; i++) {
         int oy = 395 - i * 68; // Y tiap opsi, dari bawah ke atas

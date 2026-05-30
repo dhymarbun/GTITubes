@@ -142,7 +142,7 @@ void renderRulesScreen() {
         "",
         "QUIZ BOARD (papan kayu berputar):",
         "  Dekati board => soal muncul, gerak TERKUNCI",
-        "  A/B/C/D = jawab pilihan",
+        "  1/2/3/4 = jawab pilihan",
         "  E = lewati soal (penalti kecil +2 detik, tidak kehilangan nyawa)",
         "",
         "SISTEM NYAWA: Mulai dengan 3 nyawa (hati)",

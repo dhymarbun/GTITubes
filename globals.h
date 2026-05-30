@@ -111,9 +111,9 @@ extern int mazeCopy[10][10];  // Salinan maze awal untuk reset game
 extern const int TOTAL_QUESTIONS;
 
 // Urutan soal setelah dikocok (easy -> medium -> hard)
-extern int  questionOrder[10];
+extern int  questionOrder[20];
 // Status apakah soal sudah pernah dipakai dalam sesi ini
-extern bool questionUsed[10];
+extern bool questionUsed[20];
 // Indeks iterasi getNextQuestion()
 extern int  currentQuestionIndex;
 // ID soal yang sedang aktif ditampilkan
