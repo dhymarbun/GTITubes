@@ -9,7 +9,7 @@
 #include <cstdlib>
 
 // =============================================
-// POOL SOAL
+// SOAL
 // =============================================
 // Soal dibagi tiga tingkat:
 //   Index 0-2 : Easy   (matematika & CS dasar)
