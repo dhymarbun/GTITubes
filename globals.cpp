@@ -91,10 +91,10 @@ int mazeCopy[10][10];
 // =============================================
 // QUIZ
 // =============================================
-const int TOTAL_QUESTIONS = 10;
+const int TOTAL_QUESTIONS = 20;
 
-int  questionOrder[10];
-bool questionUsed[10];
+int  questionOrder[20];
+bool questionUsed[20];
 int  currentQuestionIndex = 0;
 int  activeQuestion       = 0;
 
