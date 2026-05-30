@@ -116,31 +116,38 @@ bool isNearBoard(float px, float pz, int x, int z) {
 // RENDER GROUND
 // =============================================
 void renderGround() {
-    // Matikan lighting agar ground tampil flat (warna solid, tidak shading)
     glDisable(GL_LIGHTING);
 
-    // Ground plane sedikit di bawah y=0 (-0.01) agar tidak z-fighting
-    // dengan dinding yang lantainya juga di y=0
-    glBegin(GL_QUADS);
-    glColor3f(0.22f, 0.32f, 0.18f); // Hijau gelap seperti rerumputan
-    glVertex3f(0.0f,            -0.01f, 0.0f);
-    glVertex3f((float)MAZE_WIDTH, -0.01f, 0.0f);
-    glVertex3f((float)MAZE_WIDTH, -0.01f, (float)MAZE_HEIGHT);
-    glVertex3f(0.0f,            -0.01f, (float)MAZE_HEIGHT);
-    glEnd();
+    for (int x = 0; x < MAZE_WIDTH; x++) {
+        for (int z = 0; z < MAZE_HEIGHT; z++) {
 
-    // Grid lines untuk memberi kesan grid lantai / depth cue
+            if ((x + z) % 2 == 0)
+                glColor3f(0.78f, 0.78f, 0.78f);
+            else
+                glColor3f(0.60f, 0.60f, 0.60f);
+
+            glBegin(GL_QUADS);
+                glVertex3f((float)x,     -0.01f, (float)z);
+                glVertex3f((float)x + 1, -0.01f, (float)z);
+                glVertex3f((float)x + 1, -0.01f, (float)z + 1);
+                glVertex3f((float)x,     -0.01f, (float)z + 1);
+            glEnd();
+        }
+    }
+
+    glColor3f(0.05f, 0.05f, 0.05f);
     glLineWidth(1.0f);
+
     glBegin(GL_LINES);
-    glColor3f(0.15f, 0.23f, 0.12f);
-    for (int i = 0; i <= MAZE_WIDTH; i++) {
-        glVertex3f((float)i, -0.005f, 0.0f);
-        glVertex3f((float)i, -0.005f, (float)MAZE_HEIGHT);
-    }
-    for (int j = 0; j <= MAZE_HEIGHT; j++) {
-        glVertex3f(0.0f,            -0.005f, (float)j);
-        glVertex3f((float)MAZE_WIDTH, -0.005f, (float)j);
-    }
+        for (int i = 0; i <= MAZE_WIDTH; i++) {
+            glVertex3f((float)i, -0.005f, 0.0f);
+            glVertex3f((float)i, -0.005f, (float)MAZE_HEIGHT);
+        }
+
+        for (int j = 0; j <= MAZE_HEIGHT; j++) {
+            glVertex3f(0.0f, -0.005f, (float)j);
+            glVertex3f((float)MAZE_WIDTH, -0.005f, (float)j);
+        }
     glEnd();
 
     glEnable(GL_LIGHTING);
@@ -160,13 +167,67 @@ void renderMaze() {
 
             // --- TILE 1: Dinding ---
             if (maze[z][x] == 1) {
-                GLfloat grey[] = {0.5f, 0.5f, 0.5f, 1.0f};
-                glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, grey);
+                //Warna dasar
+                GLfloat brick[] = {0.55f, 0.18f, 0.10f, 1.0f};
+                glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, brick);
+
                 glPushMatrix();
                     glTranslatef(x + 0.5f, 0.5f, z + 0.5f);
                     drawCube(1.0f);
                 glPopMatrix();
-            }
+
+                //Gamar kotak kotak berbntuk bata
+                glDisable(GL_LIGHTING);
+                glColor3f(0.05f, 0.02f, 0.01f);
+
+                glPushMatrix();
+                glTranslatef((float)x, 0.0f, (float)z);
+
+                // Garis horizontal bata
+                for (float y = 0.2f; y < 1.0f; y += 0.2f) {
+                    glBegin(GL_LINES);
+
+                    glVertex3f(0.01f, y, -0.001f);
+                    glVertex3f(0.99f, y, -0.001f);
+
+                    glVertex3f(0.01f, y, 1.001f);
+                    glVertex3f(0.99f, y, 1.001f);
+
+                    glVertex3f(-0.001f, y, 0.01f);
+                    glVertex3f(-0.001f, y, 0.99f);
+
+                    glVertex3f(1.001f, y, 0.01f);
+                    glVertex3f(1.001f, y, 0.99f);
+
+                    glEnd();
+                }
+
+                    // Garis vertikal bata
+                    for (float y = 0.0f; y < 1.0f; y += 0.2f) {
+                            float offset = ((int)(y * 10) % 4 == 0) ? 0.25f : 0.5f;
+
+                    for (float a = offset; a < 1.0f; a += 0.5f) {
+                        glBegin(GL_LINES);
+
+                        glVertex3f(a, y, -0.001f);
+                        glVertex3f(a, y + 0.2f, -0.001f);
+
+                        glVertex3f(a, y, 1.001f);
+                        glVertex3f(a, y + 0.2f, 1.001f);
+
+                        glVertex3f(-0.001f, y, a);
+                        glVertex3f(-0.001f, y + 0.2f, a);
+
+                        glVertex3f(1.001f, y, a);
+                        glVertex3f(1.001f, y + 0.2f, a);
+
+                    glEnd();
+                    }
+                }
+
+            glPopMatrix();
+glEnable(GL_LIGHTING);
+}
 
             // --- TILE 2: Goal (blok merah) ---
             else if (maze[z][x] == 2) {
