@@ -112,7 +112,7 @@ void drawPlayer() {
     glLineWidth(1.0f);
     glEnable(GL_LIGHTING);
 
-    glPopMatrix();
+    glPopMatrix(); // 
 }
 
 // =============================================
