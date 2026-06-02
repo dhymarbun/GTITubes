@@ -133,5 +133,19 @@ bool keyPressedLastFrame[GLFW_KEY_LAST] = {false};
 // Default: first-person. Toggle dengan tombol V.
 // =============================================
 CameraMode cameraMode = FIRST_PERSON;
-float tpDistance = 2.5f; // Jarak kamera ke belakang player (unit dunia)
-float tpHeight   = 1.8f; // Ketinggian kamera di atas player
+float tpDistance = 0.8f; // Jarak kamera ke belakang player (unit dunia)
+float tpHeight   = 0.4f; // Ketinggian kamera di atas player
+
+#include <stdio.h>
+#include <stdarg.h>
+
+// Mantra penjinak error __imp__snprintf untuk GCC modern
+extern "C" {
+    int __imp__snprintf(char* str, size_t size, const char* format, ...) {
+        va_list args;
+        va_start(args, format);
+        int result = vsnprintf(str, size, format, args);
+        va_end(args);
+        return result; //
+    }
+}
