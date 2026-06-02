@@ -148,9 +148,9 @@ void setupCamera() {
         //   belakang player = -lookX, +lookZ
         // Dikalikan tpDistance untuk jarak, lalu diberi offset Y tpHeight.
         // -----------------------------------------------
-        float eyeX = playerX - lookX * tpDistance;
-        float eyeZ = playerZ - lookZ * tpDistance;
-        float eyeY = playerY + tpHeight;
+        float eyeX = playerX - lookX * 0.8f;
+        float eyeZ = playerZ - lookZ * 0.8f;
+        float eyeY = playerY + 0.7f;
 
         gluLookAt(
             eyeX,    eyeY,          eyeZ,           // posisi mata (di belakang-atas)
