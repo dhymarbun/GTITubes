@@ -64,7 +64,7 @@ static void resetGame(float currentTime) {
 }
 
 // =============================================
-// DRAW PLAYER (Third-Person Model)
+// DRAW PLAYER (GTA Perspective Model)
 // =============================================
 // =============================================
 // DRAW PLAYER (Minecraft Steve Style with Feet)
@@ -229,7 +229,7 @@ void drawPlayer() {
 // SETUP CAMERA
 // =============================================
 // =============================================
-// SETUP CAMERA (3 MODE KAMERA SEKALIGUS)
+// SETUP CAMERA
 // =============================================
 void setupCamera() {
     glMatrixMode(GL_PROJECTION);
@@ -251,51 +251,6 @@ void setupCamera() {
             playerX,          playerY + 0.5f, playerZ,           // posisi mata
             playerX + lookX,  playerY + 0.5f, playerZ + lookZ,   // titik pandang
             0.0f, 1.0f, 0.0f                                      // vektor atas
-        );
-
-    } else if (cameraMode == THIRD_PERSON) {
-        // -----------------------------------------------
-        // THIRD PERSON ORIGINAL: Setelan awal kelompok lo (Aman & Stabil)
-        // -----------------------------------------------
-<<<<<<< Updated upstream
-        float eyeX = playerX - lookX * 0.8f;
-        float eyeZ = playerZ - lookZ * 0.8f;
-        float eyeY = playerY + 0.7f;
-=======
-<<<<<<< Updated upstream
-        float eyeX = playerX - lookX * tpDistance;
-        float eyeZ = playerZ - lookZ * tpDistance;
-        float eyeY = playerY + tpHeight;
-=======
-        float targetDistance = 0.8f; // Jarak ideal kamera di belakang player
-        
-        float eyeX = playerX - lookX * targetDistance;
-        float eyeZ = playerZ - lookZ * targetDistance;
-        float eyeY = playerY + 0.7f;
->>>>>>> Stashed changes
-
-        // Loop pengecekan tabrakan kamera dengan dinding
-        for (int i = 0; i < 10; i++) {
-            if (checkCollision(eyeX, eyeZ)) {
-                targetDistance -= 0.07f;
-                eyeX = playerX - lookX * targetDistance;
-                eyeZ = playerZ - lookZ * targetDistance;
-            } else {
-                break;
-            }
-        }
-
-        if (targetDistance < 0.15f) {
-            targetDistance = 0.15f;
-            eyeX = playerX - lookX * targetDistance;
-            eyeZ = playerZ - lookZ * targetDistance;
-        }
->>>>>>> Stashed changes
-
-        gluLookAt(
-            eyeX,    eyeY,          eyeZ,           // posisi mata (di belakang-atas)
-            playerX, playerY + 0.5f, playerZ,        // titik pandang (kepala player)
-            0.0f, 1.0f, 0.0f                          // vektor atas
         );
 
     } else if (cameraMode == GTA_PERSPECTIVE) {
@@ -597,17 +552,14 @@ void processInput(GLFWwindow* window) {
         }
     }
 
-    // V: Toggle antara First-Person dan Third-Person
+    // V: Toggle antara First-Person dan GTA Perspective
     // Hanya bisa di-toggle saat PLAYING, bukan saat quiz/menu.
    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_V]) {
         if (cameraMode == FIRST_PERSON) {
-            cameraMode = THIRD_PERSON;
-            printf("[CAM] Mode: Third-Person (Pundak)\n");
-        } else if (cameraMode == THIRD_PERSON) {
-            cameraMode = GTA_PERSPECTIVE; // <-- Sekarang dia bakal mau pindah ke mode GTA!
+            cameraMode = GTA_PERSPECTIVE;
             printf("[CAM] Mode: GTA Style (Atas Kepala)\n");
         } else {
-            cameraMode = FIRST_PERSON; // Pilihan terakhir balik lagi ke FPP
+            cameraMode = FIRST_PERSON;
             printf("[CAM] Mode: First-Person\n");
         }
         keyPressedLastFrame[GLFW_KEY_V] = true;

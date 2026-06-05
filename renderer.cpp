@@ -138,7 +138,7 @@ void renderRulesScreen() {
     glColor3f(1, 1, 1);
     const char* lines[] = {
         "GERAKAN: W=Maju  S=Mundur  A=Putar Kiri  D=Putar Kanan",
-        "[V] = Toggle First-Person / Third-Person View",
+        "[V] = Toggle First-Person / GTA View",
         "",
         "QUIZ BOARD (papan kayu berputar):",
         "  Dekati board => soal muncul, gerak TERKUNCI",

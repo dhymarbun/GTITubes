@@ -20,7 +20,7 @@
  * @param dest Array tujuan [MAZE_WIDTH][MAZE_HEIGHT].
  * @param src  Array sumber [MAZE_WIDTH][MAZE_HEIGHT].
  */
-void copyMazeArray(int dest[10][10], int src[10][10]);
+void copyMazeArray(int dest[20][20], int src[20][20]);
 
 // =============================================
 // COLLISION DETECTION
@@ -80,6 +80,23 @@ void drawCube(float size);
  * tampil flat dan tidak terpengaruh shading dinding.
  */
 void renderGround();
+
+/**
+ * @brief Memuat tekstur langit BMP 24-bit dari file.
+ *
+ * @return true jika tekstur berhasil dimuat.
+ */
+bool loadSkyTexture(const char* filename);
+
+/**
+ * @brief Menggambar skybox bertekstur mengelilingi player.
+ */
+void renderSky();
+
+/**
+ * @brief Melepas texture OpenGL milik skybox.
+ */
+void cleanupSkyTexture();
 
 /**
  * @brief Menggambar semua elemen maze: dinding, goal, dan board soal.

@@ -92,6 +92,11 @@ int main() {
     glEnable(GL_CULL_FACE);   // Culling face belakang untuk performa
     glCullFace(GL_BACK);
 
+    if (loadSkyTexture("sky.bmp"))
+        printf("[INFO] Tekstur langit sky.bmp berhasil dimuat.\n");
+    else
+        printf("[INFO] sky.bmp tidak ditemukan/format tidak didukung; memakai langit biru.\n");
+
     // ---- Inisialisasi data game ----
     // Simpan snapshot maze awal sebelum gameplay mengubahnya (board dihapus saat soal selesai)
     copyMazeArray(mazeCopy, maze);
@@ -160,10 +165,10 @@ int main() {
             case PLAYING:
                 updateTimer();
                 setupCamera();
+                renderSky();
                 renderGround();
                 renderMaze();
-                // KUNCI PERUBAHAN 1: Ditambahkan syarat || cameraMode == GTA_PERSPECTIVE
-                if (cameraMode == THIRD_PERSON || cameraMode == GTA_PERSPECTIVE) drawPlayer();
+                if (cameraMode == GTA_PERSPECTIVE) drawPlayer();
                 renderHUD();
                 renderFeedbackOverlay();
                 break;
@@ -171,10 +176,10 @@ int main() {
             case QUIZ_SCREEN:
                 updateTimer();
                 setupCamera();
+                renderSky();
                 renderGround();
                 renderMaze();
-                // KUNCI PERUBAHAN 2: Ditambahkan syarat || cameraMode == GTA_PERSPECTIVE juga di sini
-                if (cameraMode == THIRD_PERSON || cameraMode == GTA_PERSPECTIVE) drawPlayer();
+                if (cameraMode == GTA_PERSPECTIVE) drawPlayer();
                 renderHUD();
                 renderQuizScreen(); // renderQuizScreen juga memanggil renderFeedbackOverlay di dalamnya
                 break;
@@ -193,6 +198,7 @@ int main() {
         glfwPollEvents();
     }
 
+    cleanupSkyTexture();
     glfwTerminate();
     return 0;
 }

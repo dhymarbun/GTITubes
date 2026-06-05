@@ -48,7 +48,7 @@ void renderHUD() {
     for (int i = 0; scoreString[i]; i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, scoreString[i]);
 
     // Label mode kamera (tengah atas) — dikembalikan ke tengah bawaan asli kelompok lo
-    const char* camLabel = (cameraMode == FIRST_PERSON) ? "[FP]" : (cameraMode == THIRD_PERSON ? "[TP]" : "[GTA]");
+    const char* camLabel = (cameraMode == FIRST_PERSON) ? "[FP]" : "[GTA]";
     glColor3f(0.7f, 0.9f, 1.0f);
     glRasterPos2i(WIDTH / 2 - 14, 20);
     for (int i = 0; camLabel[i]; i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, camLabel[i]);

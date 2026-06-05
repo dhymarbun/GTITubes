@@ -19,20 +19,16 @@
  * Kamera ditempatkan tepat di kepala player (playerY + 0.5) dan mengarah
  * ke depan berdasarkan playerAngle. Player tidak terlihat sebagai objek.
  *
- * === THIRD_PERSON ===
- * Kamera mengambang di belakang dan atas player:
- *   eyeX = playerX - sin(playerAngle) * tpDistance
- *   eyeZ = playerZ + cos(playerAngle) * tpDistance
- *   eyeY = playerY + tpHeight
- * Target pandang tetap ke playerX, playerY+0.5, playerZ.
- * Model player (drawPlayer) dirender setelah setupCamera di mode ini.
+ * === GTA_PERSPECTIVE ===
+ * Kamera mengambang di belakang dan atas player dengan pengecekan
+ * tabrakan dinding. Model player dirender dalam mode ini.
  *
  * Keduanya memakai FOV 60°, near=0.1, far=100.
  */
 void setupCamera();
 
 /**
- * @brief Menggambar model player 3D sederhana untuk third-person view.
+ * @brief Menggambar model player 3D sederhana untuk GTA view.
  *
  * Model terdiri dari:
  *   - Badan: kubus putih agak gepeng (0.4 x 0.6 x 0.3)
@@ -41,7 +37,7 @@ void setupCamera();
  *
  * Transformasi: ditaruh di posisi player (playerX, 0, playerZ),
  * dirotasi sesuai playerAngle. Fungsi ini hanya dipanggil saat
- * cameraMode == THIRD_PERSON.
+ * cameraMode == GTA_PERSPECTIVE.
  */
 void drawPlayer();
 

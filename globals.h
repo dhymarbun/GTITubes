@@ -101,8 +101,8 @@ extern const float REWARD_CORRECT;  // Benar        => -3 detik dari waktu
 // =============================================
 extern const int MAZE_WIDTH;
 extern const int MAZE_HEIGHT;
-extern int maze[10][10];      // Maze aktif (berubah saat board diambil)
-extern int mazeCopy[10][10];  // Salinan maze awal untuk reset game
+extern int maze[20][20];      // Maze aktif (berubah saat board diambil)
+extern int mazeCopy[20][20];  // Salinan maze awal untuk reset game
 
 // =============================================
 // QUIZ STATE
@@ -154,16 +154,10 @@ extern const float QUIZ_COOLDOWN;
 // Mendukung dua mode kamera yang bisa di-toggle tombol V saat PLAYING.
 //
 // FIRST_PERSON : kamera tepat di kepala player, pandangan ke depan.
-// THIRD_PERSON : kamera mengambang di belakang-atas player, player
-//                terlihat sebagai model 3D kecil di tengah layar.
+// GTA_PERSPECTIVE : kamera di belakang-atas player, player terlihat.
 // =============================================
-enum CameraMode { FIRST_PERSON, THIRD_PERSON, GTA_PERSPECTIVE }; // <-- Kunci Perubahan: Tambahkan GTA_PERSPECTIVE di sini
+enum CameraMode { FIRST_PERSON, GTA_PERSPECTIVE };
 extern CameraMode cameraMode;
-
-// Jarak dan ketinggian kamera dari player saat third-person.
-// Bisa diubah runtime via globals.cpp untuk fine-tuning.
-extern float tpDistance; // Jarak horizontal ke belakang player
-extern float tpHeight;   // Ketinggian kamera di atas player
 
 // =============================================
 // KEY STATE (debounce)
