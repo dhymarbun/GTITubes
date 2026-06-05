@@ -66,57 +66,170 @@ static void resetGame(float currentTime) {
 // =============================================
 // DRAW PLAYER (Third-Person Model)
 // =============================================
+// =============================================
+// DRAW PLAYER (Minecraft Steve Style with Feet)
+// =============================================
+// =============================================
+// DRAW PLAYER (Minecraft Steve Style with Feet)
+// =============================================
 void drawPlayer() {
+    // Kunci: Jika kamera lagi mode First Person, jangan gambar orangnya biar gak bug di mata
+    if (cameraMode == FIRST_PERSON) {
+        return; 
+    }
+
     glPushMatrix();
 
     // Tempatkan model di posisi player, rotasi sesuai arah hadap.
-    // Konversi playerAngle (radian, sumbu Y) ke derajat untuk glRotatef.
-    // Ditambah 180° karena model menghadap +Z saat angle=0, sedangkan
-    // konvensi gerak kita adalah -Z = maju saat angle=0.
     glTranslatef(playerX, playerY, playerZ);
     glRotatef(-(playerAngle * 180.0f / 3.14159265f) + 180.0f, 0.0f, 1.0f, 0.0f);
 
-    // Matikan specular agar model terlihat flat/cartoon
-    GLfloat no_spec[] = {0, 0, 0, 1};
-    GLfloat no_shin[] = {0};
-    glMaterialfv(GL_FRONT, GL_SPECULAR,  no_spec);
-    glMaterialfv(GL_FRONT, GL_SHININESS, no_shin);
+    // ========================================================
+    // LOGIKA AYUNAN LENGAN & KAKI (SAAT BERGERAK MAJU/MUNDUR)
+    // ========================================================
+    float swingAngle = 0.0f;
+    
+    GLFWwindow* currentWin = glfwGetCurrentContext();
+    if (currentWin && (glfwGetKey(currentWin, GLFW_KEY_W) == GLFW_PRESS || 
+                       glfwGetKey(currentWin, GLFW_KEY_S) == GLFW_PRESS)) {
+        swingAngle = sinf((float)glfwGetTime() * 12.0f) * 35.0f;
+    }
 
-    // --- Badan (putih keabuan) ---
-    GLfloat bodyColor[] = {0.85f, 0.85f, 0.9f, 1.0f};
+    // ========================================================
+    // DEFINISI WARNA (Teal, Krem Salem, Rambut Hitam, Celana Ungu, Sepatu)
+    // ========================================================
+    GLfloat bodyColor[]   = {0.0f, 0.5f, 0.5f, 1.0f};   // Baju Teal
+    GLfloat headColor[]   = {1.0f, 0.8f, 0.67f, 1.0f};  // Kulit Krem Salem
+    GLfloat hairColor[]   = {0.0f, 0.0f, 0.0f, 1.0f};   // Rambut Hitam
+    GLfloat legColor[]    = {0.5f, 0.0f, 0.5f, 1.0f};   // Celana Ungu
+    GLfloat shoeColor[]   = {0.3f, 0.2f, 0.1f, 1.0f};   // Sepatu Cokelat Tua
+
+    glEnable(GL_LIGHTING);
+    GLfloat no_mat[] = {0.0f, 0.0f, 0.0f, 1.0f};
+    glMaterialfv(GL_FRONT, GL_SPECULAR, no_mat);
+    glMaterialfv(GL_FRONT, GL_EMISSION, no_mat);
+
+    // --------------------------------------------------------
+    // 1. BALOK BADAN / TORSO (Diangkat ke atas memberi ruang kaki)
+    // --------------------------------------------------------
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, bodyColor);
     glPushMatrix();
-        glTranslatef(0.0f, 0.3f, 0.0f); // Pusat badan di y=0.3
-        glScalef(0.4f, 0.6f, 0.3f);
+        glTranslatef(0.0f, 0.45f, 0.0f); 
+        glScalef(0.4f, 0.45f, 0.25f);    
         drawCube(1.0f);
     glPopMatrix();
 
-    // --- Kepala (skin-tone) ---
-    GLfloat headColor[] = {0.95f, 0.78f, 0.60f, 1.0f};
+    // --------------------------------------------------------
+    // 2. KEPALA UTAMA + RAMBUT HITAM (1/3 ATAS)
+    // --------------------------------------------------------
+    // A. Kulit Muka (2/3 bawah kepala)
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, headColor);
     glPushMatrix();
-        glTranslatef(0.0f, 0.72f, 0.0f); // Di atas badan
-        glScalef(0.28f, 0.28f, 0.28f);
+        glTranslatef(0.0f, 0.73f, 0.0f); 
+        glScalef(0.26f, 0.2f, 0.26f); 
         drawCube(1.0f);
     glPopMatrix();
 
-    // --- Indikator arah hadap (garis merah ke depan) ---
-    // Dirender tanpa lighting agar warnanya solid
+    // B. Rambut Hitam (1/3 atas kubus kepala)
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, hairColor);
+    glPushMatrix();
+        glTranslatef(0.0f, 0.845f, 0.0f); 
+        glScalef(0.26f, 0.08f, 0.26f);   
+        drawCube(1.0f);
+    glPopMatrix();
+
+    // --------------------------------------------------------
+    // 3. LENGAN KANAN & LIRI (Ikut naik menyesuaikan torso baju)
+    // --------------------------------------------------------
+    // Lengan Kanan
+    glPushMatrix();
+        glTranslatef(-0.24f, 0.6f, 0.0f);       
+        glRotatef(swingAngle, 1.0f, 0.0f, 0.0f); 
+        glPushMatrix();
+            glTranslatef(0.0f, -0.15f, 0.0f);  
+            glScalef(0.08f, 0.3f, 0.08f);       
+            glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, bodyColor); 
+            drawCube(1.0f);
+        glPopMatrix();
+    glPopMatrix();
+
+    // Lengan Kiri
+    glPushMatrix();
+        glTranslatef(0.24f, 0.6f, 0.0f);         
+        glRotatef(-swingAngle, 1.0f, 0.0f, 0.0f); 
+        glPushMatrix();
+            glTranslatef(0.0f, -0.15f, 0.0f);
+            glScalef(0.08f, 0.3f, 0.08f);
+            glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, bodyColor);
+            drawCube(1.0f);
+        glPopMatrix();
+    glPopMatrix();
+
+    // --------------------------------------------------------
+    // 4. SEPASANG KAKI UNGU + SEPATU (Menyentuh Lantai & Melangkah)
+    // --------------------------------------------------------
+    // --- KAKI KANAN ---
+    glPushMatrix();
+        glTranslatef(-0.1f, 0.25f, 0.0f); 
+        glRotatef(-swingAngle, 1.0f, 0.0f, 0.0f); 
+        
+        // Celana Ungu Kanan
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, legColor);
+        glPushMatrix();
+            glTranslatef(0.0f, -0.08f, 0.0f);
+            glScalef(0.14f, 0.2f, 0.16f);
+            drawCube(1.0f);
+        glPopMatrix();
+        
+        // Sepatu Kanan
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, shoeColor);
+        glPushMatrix();
+            glTranslatef(0.0f, -0.21f, 0.02f); 
+            glScalef(0.14f, 0.06f, 0.2f);
+            drawCube(1.0f);
+        glPopMatrix();
+    glPopMatrix();
+
+    // --- KAKI KIRI ---
+    glPushMatrix();
+        glTranslatef(0.1f, 0.25f, 0.0f); 
+        glRotatef(swingAngle, 1.0f, 0.0f, 0.0f); 
+        
+        // Celana Ungu Kiri
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, legColor);
+        glPushMatrix();
+            glTranslatef(0.0f, -0.08f, 0.0f);
+            glScalef(0.14f, 0.2f, 0.16f);
+            drawCube(1.0f);
+        glPopMatrix();
+        
+        // Sepatu Kiri
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, shoeColor);
+        glPushMatrix();
+            glTranslatef(0.0f, -0.21f, 0.02f);
+            glScalef(0.14f, 0.06f, 0.2f);
+            drawCube(1.0f);
+        glPopMatrix();
+    glPopMatrix();
+
+    // Indikator arah hadap merah (Disembunyikan tipis di bawah lantai kaki)
     glDisable(GL_LIGHTING);
     glLineWidth(2.5f);
     glColor3f(1.0f, 0.1f, 0.1f);
     glBegin(GL_LINES);
-        glVertex3f(0.0f, 0.3f, 0.0f);   // Pusat badan
-        glVertex3f(0.0f, 0.3f, 0.35f);  // Ke depan model (+Z lokal)
+        glVertex3f(0.0f, 0.02f, 0.0f);
+        glVertex3f(0.0f, 0.02f, 0.2f);
     glEnd();
     glLineWidth(1.0f);
     glEnable(GL_LIGHTING);
 
     glPopMatrix(); // 
 }
-
 // =============================================
 // SETUP CAMERA
+// =============================================
+// =============================================
+// SETUP CAMERA (3 MODE KAMERA SEKALIGUS)
 // =============================================
 void setupCamera() {
     glMatrixMode(GL_PROJECTION);
@@ -132,7 +245,7 @@ void setupCamera() {
 
     if (cameraMode == FIRST_PERSON) {
         // -----------------------------------------------
-        // FIRST PERSON: mata di kepala player
+        // FIRST PERSON: mata di kepala player (Bawaan Asli)
         // -----------------------------------------------
         gluLookAt(
             playerX,          playerY + 0.5f, playerZ,           // posisi mata
@@ -140,26 +253,87 @@ void setupCamera() {
             0.0f, 1.0f, 0.0f                                      // vektor atas
         );
 
-    } else {
+    } else if (cameraMode == THIRD_PERSON) {
         // -----------------------------------------------
-        // THIRD PERSON: kamera di belakang-atas player
-        //
-        // eyeX/Z dihitung dengan membalik arah hadap player:
-        //   belakang player = -lookX, +lookZ
-        // Dikalikan tpDistance untuk jarak, lalu diberi offset Y tpHeight.
+        // THIRD PERSON ORIGINAL: Setelan awal kelompok lo (Aman & Stabil)
         // -----------------------------------------------
+<<<<<<< Updated upstream
         float eyeX = playerX - lookX * 0.8f;
         float eyeZ = playerZ - lookZ * 0.8f;
         float eyeY = playerY + 0.7f;
+=======
+<<<<<<< Updated upstream
+        float eyeX = playerX - lookX * tpDistance;
+        float eyeZ = playerZ - lookZ * tpDistance;
+        float eyeY = playerY + tpHeight;
+=======
+        float targetDistance = 0.8f; // Jarak ideal kamera di belakang player
+        
+        float eyeX = playerX - lookX * targetDistance;
+        float eyeZ = playerZ - lookZ * targetDistance;
+        float eyeY = playerY + 0.7f;
+>>>>>>> Stashed changes
+
+        // Loop pengecekan tabrakan kamera dengan dinding
+        for (int i = 0; i < 10; i++) {
+            if (checkCollision(eyeX, eyeZ)) {
+                targetDistance -= 0.07f;
+                eyeX = playerX - lookX * targetDistance;
+                eyeZ = playerZ - lookZ * targetDistance;
+            } else {
+                break;
+            }
+        }
+
+        if (targetDistance < 0.15f) {
+            targetDistance = 0.15f;
+            eyeX = playerX - lookX * targetDistance;
+            eyeZ = playerZ - lookZ * targetDistance;
+        }
+>>>>>>> Stashed changes
 
         gluLookAt(
             eyeX,    eyeY,          eyeZ,           // posisi mata (di belakang-atas)
             playerX, playerY + 0.5f, playerZ,        // titik pandang (kepala player)
             0.0f, 1.0f, 0.0f                          // vektor atas
         );
+
+    } else if (cameraMode == GTA_PERSPECTIVE) {
+        // -----------------------------------------------
+        // GTA PERSPECTIVE: Sudut Pandang Franklin GTA V (Mundur & Naik Pas)
+        // -----------------------------------------------
+        // KUNCI COBA 1: Jarak dimundurin ke 1.4f (Biar karakter kelihatan utuh dari kepala sampai kaki)
+        float targetDistance = 1.4f; 
+        
+        // KUNCI COBA 2: Tinggi kamera dinaikkan tipis ke +0.9f (Melewati pundak tapi tidak membocorkan rute labirin)
+        float eyeX = playerX - lookX * targetDistance;
+        float eyeZ = playerZ - lookZ * targetDistance;
+        float eyeY = playerY + 0.9f; 
+
+        // Loop pengecekan tabrakan kamera dengan dinding (Menggunakan sistem anti-nembus andalan lo)
+        for (int i = 0; i < 10; i++) {
+            if (checkCollision(eyeX, eyeZ)) {
+                targetDistance -= 0.07f; // Otomatis maju ngedeket kalau bagian belakang kamera mentok tembok
+                eyeX = playerX - lookX * targetDistance;
+                eyeZ = playerZ - lookZ * targetDistance;
+            } else {
+                break;
+            }
+        }
+
+        if (targetDistance < 0.2f) {
+            targetDistance = 0.2f;
+            eyeX = playerX - lookX * targetDistance;
+            eyeZ = playerZ - lookZ * targetDistance;
+        }
+
+        gluLookAt(
+            eyeX,    eyeY,          eyeZ,           // Posisi kamera ala GTA V
+            playerX, playerY + 0.43f, playerZ,       // KUNCI COBA 3: Pandangan mengunci sedikit di bawah kepala (torso atas) agar komposisi objek pas di tengah layar
+            0.0f, 1.0f, 0.0f                        
+        );
     }
 }
-
 // =============================================
 // PROCESS INPUT
 // =============================================
@@ -425,20 +599,20 @@ void processInput(GLFWwindow* window) {
 
     // V: Toggle antara First-Person dan Third-Person
     // Hanya bisa di-toggle saat PLAYING, bukan saat quiz/menu.
-    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_V]) {
-        cameraMode = (cameraMode == FIRST_PERSON) ? THIRD_PERSON : FIRST_PERSON;
-        printf("[CAM] Mode: %s\n", cameraMode == FIRST_PERSON ? "First-Person" : "Third-Person");
+   if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_V]) {
+        if (cameraMode == FIRST_PERSON) {
+            cameraMode = THIRD_PERSON;
+            printf("[CAM] Mode: Third-Person (Pundak)\n");
+        } else if (cameraMode == THIRD_PERSON) {
+            cameraMode = GTA_PERSPECTIVE; // <-- Sekarang dia bakal mau pindah ke mode GTA!
+            printf("[CAM] Mode: GTA Style (Atas Kepala)\n");
+        } else {
+            cameraMode = FIRST_PERSON; // Pilihan terakhir balik lagi ke FPP
+            printf("[CAM] Mode: First-Person\n");
+        }
         keyPressedLastFrame[GLFW_KEY_V] = true;
     } else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
         keyPressedLastFrame[GLFW_KEY_V] = false;
-    }
-
-    // ESC: Kembali ke title screen
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS && !keyPressedLastFrame[GLFW_KEY_ESCAPE]) {
-        currentGameState = TITLE_SCREEN;
-        keyPressedLastFrame[GLFW_KEY_ESCAPE] = true;
-    } else if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
-        keyPressedLastFrame[GLFW_KEY_ESCAPE] = false;
     }
 }
 

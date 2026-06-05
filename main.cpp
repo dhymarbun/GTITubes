@@ -162,8 +162,8 @@ int main() {
                 setupCamera();
                 renderGround();
                 renderMaze();
-                // Render model player hanya di mode third-person
-                if (cameraMode == THIRD_PERSON) drawPlayer();
+                // KUNCI PERUBAHAN 1: Ditambahkan syarat || cameraMode == GTA_PERSPECTIVE
+                if (cameraMode == THIRD_PERSON || cameraMode == GTA_PERSPECTIVE) drawPlayer();
                 renderHUD();
                 renderFeedbackOverlay();
                 break;
@@ -173,8 +173,8 @@ int main() {
                 setupCamera();
                 renderGround();
                 renderMaze();
-                // Model player tetap terlihat di TP saat quiz
-                if (cameraMode == THIRD_PERSON) drawPlayer();
+                // KUNCI PERUBAHAN 2: Ditambahkan syarat || cameraMode == GTA_PERSPECTIVE juga di sini
+                if (cameraMode == THIRD_PERSON || cameraMode == GTA_PERSPECTIVE) drawPlayer();
                 renderHUD();
                 renderQuizScreen(); // renderQuizScreen juga memanggil renderFeedbackOverlay di dalamnya
                 break;

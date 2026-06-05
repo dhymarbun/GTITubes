@@ -157,7 +157,7 @@ extern const float QUIZ_COOLDOWN;
 // THIRD_PERSON : kamera mengambang di belakang-atas player, player
 //                terlihat sebagai model 3D kecil di tengah layar.
 // =============================================
-enum CameraMode { FIRST_PERSON, THIRD_PERSON };
+enum CameraMode { FIRST_PERSON, THIRD_PERSON, GTA_PERSPECTIVE }; // <-- Kunci Perubahan: Tambahkan GTA_PERSPECTIVE di sini
 extern CameraMode cameraMode;
 
 // Jarak dan ketinggian kamera dari player saat third-person.

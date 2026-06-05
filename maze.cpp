@@ -68,8 +68,13 @@ void drawCube(float size) {
 // =============================================
 // CHECK COLLISION
 // =============================================
+// =============================================
+// CHECK COLLISION (DENGAN HITBOX KUSTOM)
+// =============================================
 bool checkCollision(float newX, float newZ) {
-    float buf = 0.15f; // Radius buffer agar player tidak "masuk" ke dinding
+    // Memisahkan ketebalan fisik karakter:
+    float bufX = 0.32f; // Lebar ke samping (menjaga lengan teal & krem)
+    float bufZ = 0.16f; // Tebal ke depan/belakang (biar gak nabrak dinding gaib)
 
     int cx = (int)newX;
     int cz = (int)newZ;
@@ -80,24 +85,26 @@ bool checkCollision(float newX, float newZ) {
     // Tile tempat berdiri adalah dinding
     if (maze[cz][cx] == 1) return true;
 
-    // Cek 4 sisi dan 4 sudut diagonal berdasarkan posisi fraksional
-    // dalam tile saat ini. Ini memungkinkan player "sliding" sepanjang dinding.
+    // Cek posisi fraksional dalam tile saat ini
     float fx = newX - cx;
     float fz = newZ - cz;
 
-    if (fx > (1 - buf) && cx + 1 < MAZE_WIDTH  && maze[cz][cx+1]   == 1) return true;
-    if (fx < buf        && cx - 1 >= 0           && maze[cz][cx-1]   == 1) return true;
-    if (fz > (1 - buf) && cz + 1 < MAZE_HEIGHT  && maze[cz+1][cx]   == 1) return true;
-    if (fz < buf        && cz - 1 >= 0           && maze[cz-1][cx]   == 1) return true;
+    // Cek sisi horizontal (Kanan - Kiri) menggunakan bufX
+    if (fx > (1 - bufX) && cx + 1 < MAZE_WIDTH  && maze[cz][cx+1]   == 1) return true;
+    if (fx < bufX        && cx - 1 >= 0           && maze[cz][cx-1]   == 1) return true;
+    
+    // Cek sisi vertikal (Depan - Belakang) menggunakan bufZ
+    if (fz > (1 - bufZ) && cz + 1 < MAZE_HEIGHT  && maze[cz+1][cx] == 1) return true;
+    if (fz < bufZ        && cz - 1 >= 0           && maze[cz-1][cx] == 1) return true;
 
     // Diagonal sudut kanan-bawah
-    if (fx > (1-buf) && fz > (1-buf) && cx+1 < MAZE_WIDTH  && cz+1 < MAZE_HEIGHT && maze[cz+1][cx+1] == 1) return true;
+    if (fx > (1-bufX) && fz > (1-bufZ) && cx+1 < MAZE_WIDTH  && cz+1 < MAZE_HEIGHT && maze[cz+1][cx+1] == 1) return true;
     // Diagonal sudut kiri-atas
-    if (fx < buf     && fz < buf     && cx-1 >= 0           && cz-1 >= 0           && maze[cz-1][cx-1] == 1) return true;
+    if (fx < bufX     && fz < bufZ     && cx-1 >= 0           && cz-1 >= 0           && maze[cz-1][cx-1] == 1) return true;
     // Diagonal sudut kanan-atas
-    if (fx > (1-buf) && fz < buf     && cx+1 < MAZE_WIDTH   && cz-1 >= 0           && maze[cz-1][cx+1] == 1) return true;
+    if (fx > (1-bufX) && fz < bufZ     && cx+1 < MAZE_WIDTH   && cz-1 >= 0           && maze[cz-1][cx+1] == 1) return true;
     // Diagonal sudut kiri-bawah
-    if (fx < buf     && fz > (1-buf) && cx-1 >= 0           && cz+1 < MAZE_HEIGHT  && maze[cz+1][cx-1] == 1) return true;
+    if (fx < bufX     && fz > (1-bufZ) && cx-1 >= 0           && cz+1 < MAZE_HEIGHT  && maze[cz+1][cx-1] == 1) return true;
 
     return false;
 }

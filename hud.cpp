@@ -16,6 +16,9 @@
 // =============================================
 // RENDER HUD
 // =============================================
+// =============================================
+// RENDER HUD
+// =============================================
 void renderHUD() {
     glDisable(GL_LIGHTING);
 
@@ -44,29 +47,38 @@ void renderHUD() {
     glRasterPos2i(10, 38);
     for (int i = 0; scoreString[i]; i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, scoreString[i]);
 
+    // Label mode kamera (tengah atas) — dikembalikan ke tengah bawaan asli kelompok lo
+    const char* camLabel = (cameraMode == FIRST_PERSON) ? "[FP]" : (cameraMode == THIRD_PERSON ? "[TP]" : "[GTA]");
+    glColor3f(0.7f, 0.9f, 1.0f);
+    glRasterPos2i(WIDTH / 2 - 14, 20);
+    for (int i = 0; camLabel[i]; i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, camLabel[i]);
+
+    // --------------------------------------------------------
+    // KUNCI PERUBAHAN: TEKS PETUNJUK TOMBOL V (POJOK KANAN BAWAH HUD)
+    // --------------------------------------------------------
+    const char* hintText = "Press [V] to change camera mode";
+    glColor3f(0.9f, 0.9f, 0.5f); // Warna kuning pastel lembut biar kelihatan sebagai petunjuk
+    glRasterPos2i(WIDTH - 250, 42); // Diposisikan di bawah kotak nyawa, pas di dalam bar hitam HUD
+    for (int i = 0; hintText[i]; i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, hintText[i]);
+    }
+
     // Indikator nyawa [v] = isi, [ ] = kosong (kanan atas)
     glColor3f(1.0f, 0.3f, 0.3f);
     char heartFull[]  = "[v]";
     char heartEmpty[] = "[ ]";
     int lx = WIDTH - 160;
     for (int i = 0; i < MAX_LIVES; i++) {
-        glRasterPos2i(lx + i * 50, 28);
+        glRasterPos2i(lx + i * 50, 24); // Diangkat naik dikit ke Y=24 biar gak tabrakan sama teks petunjuk
         const char* h = (i < playerLives) ? heartFull : heartEmpty;
         for (int j = 0; h[j]; j++) glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, h[j]);
     }
-
-    // Label mode kamera (tengah atas) — agar player tahu mode aktif
-    const char* camLabel = (cameraMode == FIRST_PERSON) ? "[FP]" : "[TP]";
-    glColor3f(0.7f, 0.9f, 1.0f);
-    glRasterPos2i(WIDTH / 2 - 14, 20);
-    for (int i = 0; camLabel[i]; i++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, camLabel[i]);
 
     glMatrixMode(GL_MODELVIEW);  glPopMatrix();
     glMatrixMode(GL_PROJECTION); glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_LIGHTING);
 }
-
 // =============================================
 // RENDER FEEDBACK OVERLAY
 // =============================================
