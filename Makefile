@@ -8,7 +8,7 @@
 # =============================================
 
 ifeq ($(OS),Windows_NT)
-CXX      = C:/mingw64/bin/g++.exe
+CXX      = C:\msys64\mingw64\bin\g++.exe
 LIBS     = -L./lib -lglfw3 -lfreeglut -lopengl32 -lglu32 -lgdi32 -lwinmm
 RM       = del /Q
 RUN      = .\$(TARGET)

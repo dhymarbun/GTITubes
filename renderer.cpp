@@ -58,60 +58,157 @@ static void exit2D() {
 void renderTitleScreen() {
     enter2D();
 
-    // Latar belakang gradien biru gelap (bawah lebih gelap, atas lebih terang)
+    int cx = WIDTH / 2;
+    int cy = HEIGHT / 2;
+
+    float time = (float)glfwGetTime();
+
+    // ==================================================
+    // BACKGROUND GRADIENT
+    // ==================================================
     glBegin(GL_QUADS);
-        glColor3f(0.05f, 0.05f, 0.2f);  glVertex2f(0, 0);
-        glColor3f(0.05f, 0.05f, 0.2f);  glVertex2f(WIDTH, 0);
-        glColor3f(0.2f,  0.2f,  0.5f);  glVertex2f(WIDTH, HEIGHT);
-        glColor3f(0.2f,  0.2f,  0.5f);  glVertex2f(0, HEIGHT);
+        glColor3f(0.02f, 0.02f, 0.08f);
+        glVertex2f(0, 0);
+
+        glColor3f(0.02f, 0.02f, 0.08f);
+        glVertex2f(WIDTH, 0);
+
+        glColor3f(0.08f, 0.10f, 0.25f);
+        glVertex2f(WIDTH, HEIGHT);
+
+        glColor3f(0.08f, 0.10f, 0.25f);
+        glVertex2f(0, HEIGHT);
     glEnd();
 
-    int cx = WIDTH / 2, cy = HEIGHT / 2;
+    // ==================================================
+    // ANIMATED STARS
+    // ==================================================
+    glPointSize(2.0f);
 
-    // Judul game
-    glColor3f(1.0f, 0.8f, 0.0f);
-    char t1[] = "MAZE3D - QUIZ CHALLENGE";
-    RENDER_STR(GLUT_BITMAP_TIMES_ROMAN_24, cx - (int)(strlen(t1) * 7), cy + 90, t1);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < 180; i++) {
 
-    // Subtitle
-    glColor3f(0.7f, 0.9f, 1.0f);
-    char t2[] = "10 Soal | 3 Nyawa | Easy -> Hard";
-    RENDER_STR(GLUT_BITMAP_HELVETICA_18, cx - (int)(strlen(t2) * 5), cy + 55, t2);
+        float x = fmodf(i * 67.0f + time * 20.0f, (float)WIDTH);
+        float y = fmodf(i * 113.0f, (float)HEIGHT);
 
-    // Daftar kontrol
-    glColor3f(1, 1, 1);
-    const char* items[] = {"Press P to Play", "Press ? for Rules", "Press ESC to Quit"};
-    for (int i = 0; i < 3; i++)
-        RENDER_STR(GLUT_BITMAP_HELVETICA_18, cx - (int)(strlen(items[i]) * 4), cy - 10 - i * 30, items[i]);
+        float glow = 0.5f + 0.5f * sinf(time * 2.0f + i);
 
-    // Keterangan camera toggle
-    glColor3f(0.6f, 0.9f, 0.6f);
-    char camTip[] = "[V] Toggle First / Third Person (saat bermain)";
-    RENDER_STR(GLUT_BITMAP_HELVETICA_12, cx - (int)(strlen(camTip) * 3), cy - 105, camTip);
+        glColor3f(glow, glow, glow);
 
-    // Bingkai beranimasi pulse (sin wave pada brightness)
-    float pulse = (sinf((float)glfwGetTime() * 2.0f) + 1.0f) * 0.5f;
-    glLineWidth(3.0f);
-    glColor3f(0.5f + pulse * 0.5f, 0.4f, 0.0f);
+        glVertex2f(x, y);
+    }
+    glEnd();
+
+    // ==================================================
+    // OUTER FRAME
+    // ==================================================
+    float pulse = (sinf(time * 2.5f) + 1.0f) * 0.5f;
+
+    glLineWidth(4.0f);
+
+    glColor3f(
+        0.7f + pulse * 0.3f,
+        0.5f + pulse * 0.3f,
+        0.0f
+    );
+
     glBegin(GL_LINE_LOOP);
-        glVertex2f(cx - 250, cy - 115);
-        glVertex2f(cx + 250, cy - 115);
-        glVertex2f(cx + 250, cy + 120);
-        glVertex2f(cx - 250, cy + 120);
+        glVertex2f(40, 40);
+        glVertex2f(WIDTH - 40, 40);
+        glVertex2f(WIDTH - 40, HEIGHT - 40);
+        glVertex2f(40, HEIGHT - 40);
     glEnd();
+
     glLineWidth(1.0f);
 
-    // Credits di bawah layar
-    glColor3f(0.65f, 0.65f, 0.65f);
-    const char* credits[] = {
-        "Adhyaksa M. Banjar Nahor - 24060124140152",
-        "Raihan Lazuardi           - 24060124140178",
-        "Ganendra Satya Sindhunata - 24060124120025"
+    // ==================================================
+    // TITLE GLOW
+    // ==================================================
+    float glow = (sinf(time * 3.0f) + 1.0f) * 0.5f;
+
+    glColor3f(
+        1.0f,
+        0.6f + glow * 0.4f,
+        glow * 0.2f
+    );
+
+    char title[] = "QUIZMAZE";
+
+    RENDER_STR(
+        GLUT_BITMAP_TIMES_ROMAN_24,
+        cx - (int)(strlen(title) * 8),
+        cy + 160,
+        title
+    );
+
+    // ==================================================
+    // MENU PANEL
+    // ==================================================
+    const char* menu[] = {
+        "[P] START GAME",
+        "[?] HOW TO PLAY",
+        "[ESC] EXIT"
     };
+
     for (int i = 0; i < 3; i++) {
-        int tw = (int)(strlen(credits[i]) * 6);
-        RENDER_STR(GLUT_BITMAP_HELVETICA_12, cx - tw / 2, 14 + i * 16, credits[i]);
+
+        RENDER_STR(
+            GLUT_BITMAP_HELVETICA_18,
+            cx - (int)(strlen(menu[i]) * 4),
+            cy + 35 - i * 30,
+            menu[i]
+        );
     }
+
+    // ==================================================
+    // CAMERA INFO
+    // ==================================================
+    glColor3f(0.6f, 1.0f, 0.6f);
+
+    char cam[] = "Press V During Gameplay To Change Camera";
+
+    RENDER_STR(
+        GLUT_BITMAP_HELVETICA_12,
+        cx - (int)(strlen(cam) * 3),
+        cy - 55,
+        cam
+    );
+
+    // ==================================================
+    // TEAM SECTION
+    // ==================================================
+    glColor3f(0.85f, 0.85f, 0.85f);
+
+    const char* members[] = {
+        "Adhyaksa M. Banjar Nahor",
+        "Raihan Lazuardi",
+        "Ganendra Satya Sindhunata",
+        "Farhan Muhtarram"
+    };
+
+    for (int i = 0; i < 4; i++) {
+
+        RENDER_STR(
+            GLUT_BITMAP_HELVETICA_12,
+            cx - (int)(strlen(members[i]) * 3),
+            170 - i * 18,
+            members[i]
+        );
+    }
+
+    // ==================================================
+    // FOOTER
+    // ==================================================
+    glColor3f(0.5f, 0.5f, 0.5f);
+
+    char footer[] = "Informatika 2024 - Tugas Besar GKV - Kelompok 10";
+
+    RENDER_STR(
+        GLUT_BITMAP_HELVETICA_10,
+        cx - (int)(strlen(footer) * 3),
+        20,
+        footer
+    );
 
     exit2D();
 }

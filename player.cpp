@@ -66,12 +66,6 @@ static void resetGame(float currentTime) {
 // =============================================
 // DRAW PLAYER (GTA Perspective Model)
 // =============================================
-// =============================================
-// DRAW PLAYER (Minecraft Steve Style with Feet)
-// =============================================
-// =============================================
-// DRAW PLAYER (Minecraft Steve Style with Feet)
-// =============================================
 void drawPlayer() {
     // Kunci: Jika kamera lagi mode First Person, jangan gambar orangnya biar gak bug di mata
     if (cameraMode == FIRST_PERSON) {
@@ -225,9 +219,6 @@ void drawPlayer() {
 
     glPopMatrix(); // 
 }
-// =============================================
-// SETUP CAMERA
-// =============================================
 // =============================================
 // SETUP CAMERA
 // =============================================
