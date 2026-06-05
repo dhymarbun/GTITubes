@@ -89,6 +89,20 @@ void renderGround();
 bool loadSkyTexture(const char* filename);
 
 /**
+ * @brief Memuat tekstur dinding BMP 24-bit dari file.
+ *
+ * @return true jika tekstur berhasil dimuat.
+ */
+bool loadWallTexture(const char* filename);
+
+/**
+ * @brief Memuat tekstur foto BMP 24-bit untuk poster di dekat exit.
+ *
+ * @return true jika tekstur berhasil dimuat.
+ */
+bool loadFaceTexture(const char* filename);
+
+/**
  * @brief Menggambar skybox bertekstur mengelilingi player.
  */
 void renderSky();

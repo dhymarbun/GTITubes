@@ -19,6 +19,8 @@
 #include <GL/glut.h>
 
 static GLuint skyTexture = 0;
+static GLuint wallTexture = 0;
+static GLuint faceTexture = 0;
 
 static uint16_t readU16(const unsigned char* p) {
     return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
@@ -37,7 +39,7 @@ static int lowerPowerOfTwo(int value, int limit) {
     return result;
 }
 
-bool loadSkyTexture(const char* filename) {
+static bool loadBmpTexture(const char* filename, GLuint* textureId, bool repeatTexture) {
     FILE* file = fopen(filename, "rb");
     if (!file) return false;
 
@@ -114,13 +116,13 @@ bool loadSkyTexture(const char* filename) {
         texturePixels = resized.data();
     }
 
-    if (skyTexture) glDeleteTextures(1, &skyTexture);
-    glGenTextures(1, &skyTexture);
-    glBindTexture(GL_TEXTURE_2D, skyTexture);
+    if (*textureId) glDeleteTextures(1, textureId);
+    glGenTextures(1, textureId);
+    glBindTexture(GL_TEXTURE_2D, *textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repeatTexture ? GL_REPEAT : GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeatTexture ? GL_REPEAT : GL_CLAMP);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0,
                  GL_RGB, GL_UNSIGNED_BYTE, texturePixels);
@@ -129,11 +131,50 @@ bool loadSkyTexture(const char* filename) {
     GLenum textureError = glGetError();
     glBindTexture(GL_TEXTURE_2D, 0);
     if (textureError != GL_NO_ERROR) {
-        glDeleteTextures(1, &skyTexture);
-        skyTexture = 0;
+        glDeleteTextures(1, textureId);
+        *textureId = 0;
         return false;
     }
     return true;
+}
+
+bool loadSkyTexture(const char* filename) {
+    return loadBmpTexture(filename, &skyTexture, false);
+}
+
+bool loadWallTexture(const char* filename) {
+    return loadBmpTexture(filename, &wallTexture, true);
+}
+
+bool loadFaceTexture(const char* filename) {
+    return loadBmpTexture(filename, &faceTexture, false);
+}
+
+static void drawExitFacePoster() {
+    if (!faceTexture) return;
+
+    GLboolean lightingEnabled, cullFaceEnabled, texture2DEnabled;
+    glGetBooleanv(GL_LIGHTING, &lightingEnabled);
+    glGetBooleanv(GL_CULL_FACE, &cullFaceEnabled);
+    glGetBooleanv(GL_TEXTURE_2D, &texture2DEnabled);
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, faceTexture);
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.28f, 0.24f, 0.0f);
+        glTexCoord2f(1.0f, 0.0f); glVertex3f( 0.28f, 0.24f, 0.0f);
+        glTexCoord2f(1.0f, 1.0f); glVertex3f( 0.28f, 0.80f, 0.0f);
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(-0.28f, 0.80f, 0.0f);
+    glEnd();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (texture2DEnabled) glEnable(GL_TEXTURE_2D); else glDisable(GL_TEXTURE_2D);
+    if (cullFaceEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    if (lightingEnabled) glEnable(GL_LIGHTING); else glDisable(GL_LIGHTING);
 }
 
 void renderSky() {
@@ -197,6 +238,14 @@ void cleanupSkyTexture() {
         glDeleteTextures(1, &skyTexture);
         skyTexture = 0;
     }
+    if (wallTexture) {
+        glDeleteTextures(1, &wallTexture);
+        wallTexture = 0;
+    }
+    if (faceTexture) {
+        glDeleteTextures(1, &faceTexture);
+        faceTexture = 0;
+    }
 }
 
 // =============================================
@@ -243,8 +292,14 @@ void drawCube(float size) {
     glBegin(GL_QUADS);
     for (int f = 0; f < 6; f++) {
         glNormal3fv(normals[f]);
-        for (int v = 0; v < 4; v++)
-            glVertex3fv(verts[f * 4 + v]);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex3fv(verts[f * 4 + 0]);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex3fv(verts[f * 4 + 1]);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex3fv(verts[f * 4 + 2]);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex3fv(verts[f * 4 + 3]);
     }
     glEnd();
 }
@@ -307,17 +362,19 @@ bool isNearBoard(float px, float pz, int x, int z) {
 // RENDER GROUND
 // =============================================
 void renderGround() {
-    glDisable(GL_LIGHTING);
+    glEnable(GL_LIGHTING);
+
+    GLfloat floorMat[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    GLfloat floorSpec[] = {0.12f, 0.12f, 0.12f, 1.0f};
+    GLfloat floorShin[] = {12.0f};
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, floorMat);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, floorSpec);
+    glMaterialfv(GL_FRONT, GL_SHININESS, floorShin);
 
     for (int x = 0; x < MAZE_WIDTH; x++) {
         for (int z = 0; z < MAZE_HEIGHT; z++) {
-
-            if ((x + z) % 2 == 0)
-                glColor3f(0.78f, 0.78f, 0.78f);
-            else
-                glColor3f(0.60f, 0.60f, 0.60f);
-
             glBegin(GL_QUADS);
+                glNormal3f(0.0f, 1.0f, 0.0f);
                 glVertex3f((float)x,     -0.01f, (float)z);
                 glVertex3f((float)x + 1, -0.01f, (float)z);
                 glVertex3f((float)x + 1, -0.01f, (float)z + 1);
@@ -326,7 +383,8 @@ void renderGround() {
         }
     }
 
-    glColor3f(0.05f, 0.05f, 0.05f);
+    glDisable(GL_LIGHTING);
+    glColor3f(0.86f, 0.86f, 0.86f);
     glLineWidth(1.0f);
 
     glBegin(GL_LINES);
@@ -359,66 +417,78 @@ void renderMaze() {
             // --- TILE 1: Dinding ---
             if (maze[z][x] == 1) {
                 //Warna dasar
-                GLfloat brick[] = {0.55f, 0.18f, 0.10f, 1.0f};
+                GLfloat brick[] = {wallTexture ? 1.0f : 0.55f, wallTexture ? 1.0f : 0.18f, wallTexture ? 1.0f : 0.10f, 1.0f};
                 glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, brick);
+
+                if (wallTexture) {
+                    glEnable(GL_TEXTURE_2D);
+                    glBindTexture(GL_TEXTURE_2D, wallTexture);
+                }
 
                 glPushMatrix();
                     glTranslatef(x + 0.5f, 0.5f, z + 0.5f);
                     drawCube(1.0f);
                 glPopMatrix();
 
-                //Gamar kotak kotak berbntuk bata
-                glDisable(GL_LIGHTING);
-                glColor3f(0.05f, 0.02f, 0.01f);
-
-                glPushMatrix();
-                glTranslatef((float)x, 0.0f, (float)z);
-
-                // Garis horizontal bata
-                for (float y = 0.2f; y < 1.0f; y += 0.2f) {
-                    glBegin(GL_LINES);
-
-                    glVertex3f(0.01f, y, -0.001f);
-                    glVertex3f(0.99f, y, -0.001f);
-
-                    glVertex3f(0.01f, y, 1.001f);
-                    glVertex3f(0.99f, y, 1.001f);
-
-                    glVertex3f(-0.001f, y, 0.01f);
-                    glVertex3f(-0.001f, y, 0.99f);
-
-                    glVertex3f(1.001f, y, 0.01f);
-                    glVertex3f(1.001f, y, 0.99f);
-
-                    glEnd();
+                if (wallTexture) {
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glDisable(GL_TEXTURE_2D);
                 }
+
+                if (!wallTexture) {
+                    // Gambar garis bata manual hanya saat tekstur wall tidak tersedia.
+                    glDisable(GL_LIGHTING);
+                    glColor3f(0.05f, 0.02f, 0.01f);
+
+                    glPushMatrix();
+                    glTranslatef((float)x, 0.0f, (float)z);
+
+                    // Garis horizontal bata
+                    for (float y = 0.2f; y < 1.0f; y += 0.2f) {
+                        glBegin(GL_LINES);
+
+                        glVertex3f(0.01f, y, -0.001f);
+                        glVertex3f(0.99f, y, -0.001f);
+
+                        glVertex3f(0.01f, y, 1.001f);
+                        glVertex3f(0.99f, y, 1.001f);
+
+                        glVertex3f(-0.001f, y, 0.01f);
+                        glVertex3f(-0.001f, y, 0.99f);
+
+                        glVertex3f(1.001f, y, 0.01f);
+                        glVertex3f(1.001f, y, 0.99f);
+
+                        glEnd();
+                    }
 
                     // Garis vertikal bata
                     for (float y = 0.0f; y < 1.0f; y += 0.2f) {
-                            float offset = ((int)(y * 10) % 4 == 0) ? 0.25f : 0.5f;
+                        float offset = ((int)(y * 10) % 4 == 0) ? 0.25f : 0.5f;
 
-                    for (float a = offset; a < 1.0f; a += 0.5f) {
-                        glBegin(GL_LINES);
+                        for (float a = offset; a < 1.0f; a += 0.5f) {
+                            glBegin(GL_LINES);
 
-                        glVertex3f(a, y, -0.001f);
-                        glVertex3f(a, y + 0.2f, -0.001f);
+                            glVertex3f(a, y, -0.001f);
+                            glVertex3f(a, y + 0.2f, -0.001f);
 
-                        glVertex3f(a, y, 1.001f);
-                        glVertex3f(a, y + 0.2f, 1.001f);
+                            glVertex3f(a, y, 1.001f);
+                            glVertex3f(a, y + 0.2f, 1.001f);
 
-                        glVertex3f(-0.001f, y, a);
-                        glVertex3f(-0.001f, y + 0.2f, a);
+                            glVertex3f(-0.001f, y, a);
+                            glVertex3f(-0.001f, y + 0.2f, a);
 
-                        glVertex3f(1.001f, y, a);
-                        glVertex3f(1.001f, y + 0.2f, a);
+                            glVertex3f(1.001f, y, a);
+                            glVertex3f(1.001f, y + 0.2f, a);
 
-                    glEnd();
+                            glEnd();
+                        }
                     }
-                }
 
-            glPopMatrix();
-glEnable(GL_LIGHTING);
-}
+                    glPopMatrix();
+                    glEnable(GL_LIGHTING);
+                }
+            }
 
             // --- TILE 2: Goal (pintu keluar terbuka) ---
             else if (maze[z][x] == 2) {
@@ -458,6 +528,11 @@ glEnable(GL_LIGHTING);
                         glScalef(0.72f, 0.05f, 0.24f);
                         drawCube(1.0f);
                     glPopMatrix();
+
+                    glPushMatrix();
+                        glTranslatef(0.0f, 0.0f, 0.485f);
+                        drawExitFacePoster();
+                    glPopMatrix();
                 glPopMatrix();
             }
 
@@ -485,8 +560,8 @@ glEnable(GL_LIGHTING);
                     glMaterialfv(GL_FRONT, GL_SPECULAR,  no_spec);
                     glMaterialfv(GL_FRONT, GL_SHININESS, no_shin);
                     glPushMatrix();
-                        glTranslatef(0.0f, 0.1f, 0.0f);
-                        glScalef(0.08f, 1.0f, 0.08f); // Tipis tinggi
+                        glTranslatef(0.0f, 0.34f, 0.0f);
+                        glScalef(0.05f, 0.56f, 0.05f);
                         drawCube(1.0f);
                     glPopMatrix();
 
@@ -494,8 +569,8 @@ glEnable(GL_LIGHTING);
                     GLfloat darkwood[] = {0.4f, 0.2f, 0.05f, 1.0f};
                     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, darkwood);
                     glPushMatrix();
-                        glTranslatef(0.0f, 0.72f, 0.04f);
-                        glScalef(0.7f, 0.45f, 0.06f);
+                        glTranslatef(0.0f, 0.66f, 0.035f);
+                        glScalef(0.48f, 0.30f, 0.05f);
                         drawCube(1.0f);
                     glPopMatrix();
 
@@ -503,8 +578,8 @@ glEnable(GL_LIGHTING);
                     GLfloat white[] = {1.0f, 1.0f, 1.0f, 1.0f};
                     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
                     glPushMatrix();
-                        glTranslatef(0.0f, 0.72f, 0.075f);
-                        glScalef(0.58f, 0.35f, 0.01f);
+                        glTranslatef(0.0f, 0.66f, 0.063f);
+                        glScalef(0.38f, 0.22f, 0.01f);
                         drawCube(1.0f);
                     glPopMatrix();
 
@@ -514,8 +589,8 @@ glEnable(GL_LIGHTING);
                     for (int ln = 0; ln < 4; ln++) {
                         glPushMatrix();
                             // Setiap garis digeser 0.07 ke bawah
-                            glTranslatef(0.0f, 0.82f - ln * 0.07f, 0.082f);
-                            glScalef(0.4f, 0.012f, 0.005f);
+                            glTranslatef(0.0f, 0.72f - ln * 0.04f, 0.069f);
+                            glScalef(0.26f, 0.008f, 0.005f);
                             drawCube(1.0f);
                         glPopMatrix();
                     }
@@ -524,8 +599,8 @@ glEnable(GL_LIGHTING);
                     GLfloat yellow[] = {1.0f, 0.9f, 0.0f, 1.0f};
                     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, yellow);
                     glPushMatrix();
-                        glTranslatef(0.18f, 0.72f, 0.083f);
-                        glScalef(0.06f, 0.18f, 0.005f);
+                        glTranslatef(0.12f, 0.66f, 0.070f);
+                        glScalef(0.04f, 0.12f, 0.005f);
                         drawCube(1.0f);
                     glPopMatrix();
 

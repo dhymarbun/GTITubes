@@ -97,6 +97,16 @@ int main() {
     else
         printf("[INFO] sky.bmp tidak ditemukan/format tidak didukung; memakai langit biru.\n");
 
+    if (loadWallTexture("wall.bmp"))
+        printf("[INFO] Tekstur dinding wall.bmp berhasil dimuat.\n");
+    else
+        printf("[INFO] wall.bmp tidak ditemukan/format tidak didukung; memakai warna bata.\n");
+
+    if (loadFaceTexture("face.bmp"))
+        printf("[INFO] Foto exit face.bmp berhasil dimuat.\n");
+    else
+        printf("[INFO] face.bmp tidak ditemukan/format tidak didukung; poster exit tidak ditampilkan.\n");
+
     // ---- Inisialisasi data game ----
     // Simpan snapshot maze awal sebelum gameplay mengubahnya (board dihapus saat soal selesai)
     copyMazeArray(mazeCopy, maze);
